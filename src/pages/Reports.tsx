@@ -19,6 +19,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  Legend,
 } from 'recharts'
 import { TrendingUp, ArrowDownRight, ArrowUpRight, Scale } from 'lucide-react'
 

@@ -28,6 +28,29 @@ export interface Transaction {
   created_at: string
 }
 
+export type RuleValueType = 'percentage' | 'fixed'
+
+export interface RuleVariation {
+  id: string
+  name: string
+  value: number
+  type: RuleValueType
+}
+
+export interface CommissionRule {
+  id: string
+  role: string
+  variations: RuleVariation[]
+}
+
+export interface CommissionTeam {
+  id: string
+  name: string
+  defaultTax: boolean
+  defaultLegal: boolean
+  rules: CommissionRule[]
+}
+
 export const CATEGORIES = [
   'Alimentação',
   'Transporte',

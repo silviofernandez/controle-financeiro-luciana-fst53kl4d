@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { useTransactions } from '@/contexts/TransactionContext'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Search, X } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { Input } from './ui/input'
 import { formatCurrency } from '@/lib/utils'
 import { UNIDADES, BANCOS } from '@/types'
 
@@ -15,43 +16,69 @@ export function TransactionList() {
   const { transactions, deleteTransaction } = useTransactions()
   const [filterUnidade, setFilterUnidade] = useState<string>('all')
   const [filterBanco, setFilterBanco] = useState<string>('all')
+  const [searchTerm, setSearchTerm] = useState('')
 
-  const filteredTransactions = transactions
-    .filter((t) => filterUnidade === 'all' || t.unidade === filterUnidade)
-    .filter((t) => filterBanco === 'all' || t.banco === filterBanco)
+  const filteredTransactions = transactions.filter(
+    (t) =>
+      (filterUnidade === 'all' || t.unidade === filterUnidade) &&
+      (filterBanco === 'all' || t.banco === filterBanco) &&
+      (!searchTerm || t.descricao.toLowerCase().includes(searchTerm.toLowerCase())),
+  )
 
   return (
     <Card className="shadow-md border-blue-100/50 flex-1 flex flex-col h-full overflow-hidden">
-      <CardHeader className="bg-gradient-to-r from-white to-blue-50/80 pb-4 rounded-t-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
-        <CardTitle className="text-lg">Lançamentos Detalhados</CardTitle>
-        <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-          <Select value={filterUnidade} onValueChange={setFilterUnidade}>
-            <SelectTrigger className="w-[140px] h-8 bg-white text-xs">
-              <SelectValue placeholder="Unidade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas Unidades</SelectItem>
-              {UNIDADES.map((u) => (
-                <SelectItem key={u} value={u}>
-                  {u}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <CardHeader className="bg-gradient-to-r from-white to-blue-50/80 pb-4 rounded-t-lg flex flex-col gap-4 shrink-0">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
+          <CardTitle className="text-lg">Lançamentos Detalhados</CardTitle>
+          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+            <Select value={filterUnidade} onValueChange={setFilterUnidade}>
+              <SelectTrigger className="w-[140px] h-8 bg-white text-xs">
+                <SelectValue placeholder="Unidade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas Unidades</SelectItem>
+                {UNIDADES.map((u) => (
+                  <SelectItem key={u} value={u}>
+                    {u}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={filterBanco} onValueChange={setFilterBanco}>
-            <SelectTrigger className="w-[140px] h-8 bg-white text-xs">
-              <SelectValue placeholder="Banco" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Bancos</SelectItem>
-              {BANCOS.map((b) => (
-                <SelectItem key={b} value={b}>
-                  {b}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={filterBanco} onValueChange={setFilterBanco}>
+              <SelectTrigger className="w-[140px] h-8 bg-white text-xs">
+                <SelectValue placeholder="Banco" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Bancos</SelectItem>
+                {BANCOS.map((b) => (
+                  <SelectItem key={b} value={b}>
+                    {b}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Procurar despesas (ex: integrale)..."
+            className="pl-9 pr-9 bg-white h-9 text-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={() => setSearchTerm('')}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">

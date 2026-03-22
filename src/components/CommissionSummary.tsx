@@ -64,7 +64,7 @@ export function CommissionSummary({
           Resumo do Repasse
           {totalPercentage > 100 && (
             <Badge variant="destructive" className="flex gap-1 text-xs px-2">
-              <AlertCircle className="w-3 h-3" /> Soma > 100%
+              <AlertCircle className="w-3 h-3" /> Soma &gt; 100%
             </Badge>
           )}
         </CardTitle>
@@ -113,9 +113,7 @@ export function CommissionSummary({
                     {share.isPct ? '%' : 'R$'})
                   </p>
                 </div>
-                <span className="font-medium text-emerald-600">
-                  {formatCurrency(share.amount)}
-                </span>
+                <span className="font-medium text-emerald-600">{formatCurrency(share.amount)}</span>
               </div>
             ))
           )}
@@ -124,9 +122,7 @@ export function CommissionSummary({
         {remaining !== 0 && shares.length > 0 && (
           <div className="flex justify-between text-xs text-muted-foreground pt-2">
             <span>Saldo Restante na Base</span>
-            <span className={remaining < 0 ? 'text-red-500' : ''}>
-              {formatCurrency(remaining)}
-            </span>
+            <span className={remaining < 0 ? 'text-red-500' : ''}>{formatCurrency(remaining)}</span>
           </div>
         )}
       </CardContent>

@@ -68,6 +68,7 @@ export function TransactionList() {
                   <TableHead className="min-w-[180px]">Histórico</TableHead>
                   <TableHead className="hidden md:table-cell">Unidade</TableHead>
                   <TableHead className="hidden lg:table-cell">Status/Banco</TableHead>
+                  <TableHead className="hidden md:table-cell text-center">Tipo</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Valor</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -91,8 +92,7 @@ export function TransactionList() {
                       >
                         {t.descricao}
                       </span>
-                      {/* Mobile indicators */}
-                      <div className="flex lg:hidden gap-1 mt-1.5 flex-wrap">
+                      <div className="flex md:hidden gap-1 mt-1.5 flex-wrap">
                         <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-white/50">
                           {t.unidade}
                         </Badge>
@@ -102,6 +102,14 @@ export function TransactionList() {
                         >
                           {t.banco}
                         </Badge>
+                        {t.tipo === 'despesa' && t.classificacao && (
+                          <Badge
+                            variant="outline"
+                            className={`text-[9px] px-1.5 py-0 h-4 ${t.classificacao === 'fixo' ? 'text-indigo-600 border-indigo-200 bg-indigo-50/50' : 'text-amber-600 border-amber-200 bg-amber-50/50'}`}
+                          >
+                            {t.classificacao === 'fixo' ? 'Fixo' : 'Var'}
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
@@ -114,6 +122,16 @@ export function TransactionList() {
                       >
                         {t.banco}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-center">
+                      {t.tipo === 'despesa' && t.classificacao && !t.isCheckpoint && (
+                        <Badge
+                          variant="outline"
+                          className={`font-normal text-[10px] ${t.classificacao === 'fixo' ? 'text-indigo-600 border-indigo-200 bg-indigo-50/50' : 'text-amber-600 border-amber-200 bg-amber-50/50'}`}
+                        >
+                          {t.classificacao === 'fixo' ? 'Fixo' : 'Variável'}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell
                       className={`text-right font-medium font-mono whitespace-nowrap ${

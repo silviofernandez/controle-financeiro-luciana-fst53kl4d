@@ -1,7 +1,18 @@
 export type TransactionType = 'receita' | 'despesa'
 
+export type ClassificacaoDespesa = 'fixo' | 'variavel' | null
+
 export type Unidade = 'Jau' | 'Pederneiras' | 'L. Paulista' | 'Silvio' | 'Geral'
-export type Banco = 'Santander' | 'Inter' | 'BTG' | 'Caixa' | 'Nubank' | 'D Financeiro' | 'Outros'
+export type Banco =
+  | 'Santander'
+  | 'Inter'
+  | 'BTG'
+  | 'Caixa'
+  | 'Nubank'
+  | 'D Financeiro'
+  | 'Itaú'
+  | 'Neon'
+  | 'Outros'
 
 export interface Transaction {
   id: string
@@ -13,6 +24,7 @@ export interface Transaction {
   unidade: Unidade
   banco: Banco
   isCheckpoint?: boolean
+  classificacao?: ClassificacaoDespesa
   created_at: string
 }
 
@@ -38,5 +50,7 @@ export const BANCOS: Banco[] = [
   'Caixa',
   'Nubank',
   'D Financeiro',
+  'Itaú',
+  'Neon',
   'Outros',
 ]

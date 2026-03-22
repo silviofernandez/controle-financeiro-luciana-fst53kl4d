@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useTransactions } from '@/contexts/TransactionContext'
-import { UNIDADES, BANCOS, Unidade, Banco } from '@/types'
+import { UNIDADES, BANCOS, Unidade, Banco, ClassificacaoDespesa } from '@/types'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -19,11 +19,15 @@ const BANCO_MAP: Record<string, Banco> = {
   nu: 'Nubank',
   'd financeiro': 'D Financeiro',
   dfinanceiro: 'D Financeiro',
+  itau: 'Itaú',
+  itaú: 'Itaú',
+  neon: 'Neon',
 }
 
 export function TransactionForm() {
   const { addTransaction } = useTransactions()
   const [tipo, setTipo] = useState<'receita' | 'despesa'>('despesa')
+  const [classificacao, setClassificacao] = useState<ClassificacaoDespesa>('variavel')
   const [descricao, setDescricao] = useState('')
   const [valorInput, setValorInput] = useState('')
   const [data, setData] = useState(new Date().toISOString().split('T')[0])
@@ -41,7 +45,28 @@ export function TransactionForm() {
       }
     }
     setIsCheckpoint(desc.includes('saldo financeiro'))
-  }, [descricao])
+
+    if (tipo === 'despesa') {
+      const fixedKeywords = [
+        'aluguel',
+        'iptu',
+        'parcela',
+        'sal ',
+        'salario',
+        'salário',
+        'ferias',
+        'férias',
+        'vivo',
+        'claro',
+        'internet',
+        'prolabore',
+        'unimed',
+      ]
+      if (fixedKeywords.some((k) => desc.includes(k))) {
+        setClassificacao('fixo')
+      }
+    }
+  }, [descricao, tipo])
 
   const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setValorInput(formatCurrency(parseCurrency(e.target.value)))
@@ -57,10 +82,11 @@ export function TransactionForm() {
       descricao,
       valor: parseCurrency(valorInput),
       data: new Date(data).toISOString(),
-      categoria: 'Outros', // Default category since it's less relevant now
+      categoria: 'Outros',
       unidade,
       banco,
       isCheckpoint,
+      classificacao: tipo === 'despesa' && !isCheckpoint ? classificacao : null,
     })
     setDescricao('')
     setValorInput('')
@@ -90,6 +116,25 @@ export function TransactionForm() {
               Despesa
             </button>
           </div>
+
+          {tipo === 'despesa' && !isCheckpoint && (
+            <div className="flex bg-slate-50 border border-slate-100 p-1 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setClassificacao('fixo')}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${classificacao === 'fixo' ? 'bg-white text-indigo-600 shadow-sm' : 'text-muted-foreground'}`}
+              >
+                Custo Fixo
+              </button>
+              <button
+                type="button"
+                onClick={() => setClassificacao('variavel')}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${classificacao === 'variavel' ? 'bg-white text-amber-600 shadow-sm' : 'text-muted-foreground'}`}
+              >
+                Custo Variável
+              </button>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>Histórico / Descrição</Label>

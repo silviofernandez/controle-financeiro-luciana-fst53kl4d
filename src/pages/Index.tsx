@@ -1,12 +1,19 @@
-/* Home Page - Replace this page layout, components, content, behavior with what you want and translate to the language of the user */
-const Index = () => {
+import { TransactionForm } from '@/components/TransactionForm'
+import { TransactionList } from '@/components/TransactionList'
+import { DashboardSummary } from '@/components/DashboardSummary'
+
+export default function Index() {
   return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6">
-        This is a example page ready to be rewritten with your own content
-      </h1>
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        <div className="w-full lg:w-[420px] shrink-0">
+          <TransactionForm />
+          <DashboardSummary />
+        </div>
+        <div className="flex-1 w-full lg:h-[calc(100vh-8rem)]">
+          <TransactionList />
+        </div>
+      </div>
     </div>
   )
 }
-
-export default Index

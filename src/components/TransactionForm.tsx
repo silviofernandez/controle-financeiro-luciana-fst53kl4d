@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useTransactions } from '@/contexts/TransactionContext'
 import { UNIDADES, BANCOS, Unidade, Banco, ClassificacaoDespesa } from '@/types'
 import { Button } from './ui/button'
@@ -9,6 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from './ui/checkbox'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog'
 
 const BANCO_MAP: Record<string, Banco> = {
   santander: 'Santander',
@@ -25,7 +35,7 @@ const BANCO_MAP: Record<string, Banco> = {
 }
 
 export function TransactionForm() {
-  const { addTransaction } = useTransactions()
+  const { addTransaction, transactions } = useTransactions()
   const [tipo, setTipo] = useState<'receita' | 'despesa'>('despesa')
   const [classificacao, setClassificacao] = useState<ClassificacaoDespesa>('variavel')
   const [descricao, setDescricao] = useState('')
@@ -35,6 +45,36 @@ export function TransactionForm() {
   const [banco, setBanco] = useState<Banco>('Outros')
   const [isCheckpoint, setIsCheckpoint] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [confirmDialogVisible, setConfirmDialogVisible] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  const despesaDescriptions = useMemo(() => {
+    const despesas = transactions.filter((t) => t.tipo === 'despesa')
+    const descriptions = despesas.map((t) => t.descricao.trim())
+    return Array.from(new Set(descriptions))
+  }, [transactions])
+
+  const suggestions = useMemo(() => {
+    if (tipo !== 'despesa' || !descricao) return []
+    const lowerInput = descricao.toLowerCase()
+    return despesaDescriptions
+      .filter((d) => d.toLowerCase().includes(lowerInput) && d.toLowerCase() !== lowerInput)
+      .slice(0, 10)
+  }, [descricao, despesaDescriptions, tipo])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   useEffect(() => {
     const desc = descricao.toLowerCase()
@@ -72,14 +112,12 @@ export function TransactionForm() {
     setValorInput(formatCurrency(parseCurrency(e.target.value)))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!descricao || !valorInput) return
+  const executeSubmit = async () => {
     setLoading(true)
     await new Promise((r) => setTimeout(r, 400))
     addTransaction({
       tipo,
-      descricao,
+      descricao: descricao.trim(),
       valor: parseCurrency(valorInput),
       data: new Date(data).toISOString(),
       categoria: 'Outros',
@@ -91,134 +129,191 @@ export function TransactionForm() {
     setDescricao('')
     setValorInput('')
     setLoading(false)
+    setConfirmDialogVisible(false)
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!descricao || !valorInput) return
+
+    if (tipo === 'despesa' && !isCheckpoint) {
+      const lowerDesc = descricao.trim().toLowerCase()
+      const exists = despesaDescriptions.some((d) => d.toLowerCase() === lowerDesc)
+      if (!exists && despesaDescriptions.length > 0) {
+        setConfirmDialogVisible(true)
+        return
+      }
+    }
+
+    executeSubmit()
   }
 
   return (
-    <Card className="shadow-md border-blue-100/50">
-      <CardHeader className="bg-gradient-to-r from-white to-blue-50/80 pb-4 rounded-t-lg">
-        <CardTitle className="text-lg">Novo Lançamento</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex bg-slate-100 p-1 rounded-lg">
-            <button
-              type="button"
-              onClick={() => setTipo('receita')}
-              className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${tipo === 'receita' ? 'bg-white text-green-600 shadow-sm' : 'text-muted-foreground'}`}
-            >
-              Receita
-            </button>
-            <button
-              type="button"
-              onClick={() => setTipo('despesa')}
-              className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${tipo === 'despesa' ? 'bg-white text-red-600 shadow-sm' : 'text-muted-foreground'}`}
-            >
-              Despesa
-            </button>
-          </div>
-
-          {tipo === 'despesa' && !isCheckpoint && (
-            <div className="flex bg-slate-50 border border-slate-100 p-1 rounded-lg">
+    <>
+      <Card className="shadow-md border-blue-100/50">
+        <CardHeader className="bg-gradient-to-r from-white to-blue-50/80 pb-4 rounded-t-lg">
+          <CardTitle className="text-lg">Novo Lançamento</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex bg-slate-100 p-1 rounded-lg">
               <button
                 type="button"
-                onClick={() => setClassificacao('fixo')}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${classificacao === 'fixo' ? 'bg-white text-indigo-600 shadow-sm' : 'text-muted-foreground'}`}
+                onClick={() => setTipo('receita')}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${tipo === 'receita' ? 'bg-white text-green-600 shadow-sm' : 'text-muted-foreground'}`}
               >
-                Custo Fixo
+                Receita
               </button>
               <button
                 type="button"
-                onClick={() => setClassificacao('variavel')}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${classificacao === 'variavel' ? 'bg-white text-amber-600 shadow-sm' : 'text-muted-foreground'}`}
+                onClick={() => setTipo('despesa')}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${tipo === 'despesa' ? 'bg-white text-red-600 shadow-sm' : 'text-muted-foreground'}`}
               >
-                Custo Variável
+                Despesa
               </button>
             </div>
-          )}
 
-          <div className="space-y-1.5">
-            <Label>Histórico / Descrição</Label>
-            <Input
-              required
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-              placeholder="Ex: Pagamento Fornecedor Santander"
-              className="bg-white"
-            />
-          </div>
+            {tipo === 'despesa' && !isCheckpoint && (
+              <div className="flex bg-slate-50 border border-slate-100 p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setClassificacao('fixo')}
+                  className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${classificacao === 'fixo' ? 'bg-white text-indigo-600 shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  Custo Fixo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClassificacao('variavel')}
+                  className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${classificacao === 'variavel' ? 'bg-white text-amber-600 shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  Custo Variável
+                </button>
+              </div>
+            )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Valor</Label>
+            <div className="space-y-1.5 relative" ref={wrapperRef}>
+              <Label>Histórico / Descrição</Label>
               <Input
                 required
-                value={valorInput}
-                onChange={handleValorChange}
-                placeholder="R$ 0,00"
-                className="bg-white font-mono"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Data</Label>
-              <Input
-                type="date"
-                required
-                value={data}
-                onChange={(e) => setData(e.target.value)}
+                value={descricao}
+                onChange={(e) => {
+                  setDescricao(e.target.value)
+                  setShowSuggestions(true)
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                placeholder="Ex: Pagamento Fornecedor Santander"
                 className="bg-white"
+                autoComplete="off"
               />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Unidade</Label>
-              <Select value={unidade} onValueChange={(v: Unidade) => setUnidade(v)}>
-                <SelectTrigger className="bg-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNIDADES.map((u) => (
-                    <SelectItem key={u} value={u}>
-                      {u}
-                    </SelectItem>
+              {tipo === 'despesa' && showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-md border bg-popover py-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
+                  {suggestions.map((s, i) => (
+                    <div
+                      key={i}
+                      className="cursor-pointer px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                      onClick={() => {
+                        setDescricao(s)
+                        setShowSuggestions(false)
+                      }}
+                    >
+                      {s}
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+              )}
             </div>
-            <div className="space-y-1.5">
-              <Label>Banco</Label>
-              <Select value={banco} onValueChange={(v: Banco) => setBanco(v)}>
-                <SelectTrigger className="bg-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BANCOS.map((b) => (
-                    <SelectItem key={b} value={b}>
-                      {b}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Valor</Label>
+                <Input
+                  required
+                  value={valorInput}
+                  onChange={handleValorChange}
+                  placeholder="R$ 0,00"
+                  className="bg-white font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Data</Label>
+                <Input
+                  type="date"
+                  required
+                  value={data}
+                  onChange={(e) => setData(e.target.value)}
+                  className="bg-white"
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center space-x-2 pt-1">
-            <Checkbox
-              id="checkpoint"
-              checked={isCheckpoint}
-              onCheckedChange={(c) => setIsCheckpoint(c === true)}
-            />
-            <Label htmlFor="checkpoint" className="text-xs font-normal text-muted-foreground">
-              Marcar como Saldo Financeiro
-            </Label>
-          </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Unidade</Label>
+                <Select value={unidade} onValueChange={(v: Unidade) => setUnidade(v)}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIDADES.map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Banco</Label>
+                <Select value={banco} onValueChange={(v: Banco) => setBanco(v)}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BANCOS.map((b) => (
+                      <SelectItem key={b} value={b}>
+                        {b}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-          <Button type="submit" className="w-full h-11 shadow-sm mt-2" disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Adicionar
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+            <div className="flex items-center space-x-2 pt-1">
+              <Checkbox
+                id="checkpoint"
+                checked={isCheckpoint}
+                onCheckedChange={(c) => setIsCheckpoint(c === true)}
+              />
+              <Label htmlFor="checkpoint" className="text-xs font-normal text-muted-foreground">
+                Marcar como Saldo Financeiro
+              </Label>
+            </div>
+
+            <Button type="submit" className="w-full h-11 shadow-sm mt-2" disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Adicionar
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={confirmDialogVisible} onOpenChange={setConfirmDialogVisible}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Padrão não encontrado</AlertDialogTitle>
+            <AlertDialogDescription>
+              A descrição <strong>"{descricao}"</strong> não foi encontrada no histórico de
+              despesas. Deseja criar um novo padrão ou revisar a descrição inserida para evitar
+              duplicidades?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Revisar</AlertDialogCancel>
+            <AlertDialogAction onClick={executeSubmit}>Criar Novo Padrão</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

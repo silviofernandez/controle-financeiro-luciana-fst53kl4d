@@ -23,16 +23,16 @@ export default function Reports() {
   const { transactions } = useTransactions()
 
   const pieData = useMemo(() => {
-    const expenses = transactions.filter((t) => t.tipo === 'despesa')
-    const byCategory = expenses.reduce(
+    const expenses = transactions.filter((t) => t.tipo === 'despesa' && !t.isCheckpoint)
+    const byUnit = expenses.reduce(
       (acc, t) => {
-        acc[t.categoria] = (acc[t.categoria] || 0) + t.valor
+        acc[t.unidade] = (acc[t.unidade] || 0) + t.valor
         return acc
       },
       {} as Record<string, number>,
     )
 
-    return Object.entries(byCategory)
+    return Object.entries(byUnit)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
   }, [transactions])
@@ -43,12 +43,12 @@ export default function Reports() {
 
   // Simplified Mock Data for the 6-month trend since we might not have enough real data
   const monthlyData = [
-    { name: 'Mai', receitas: 8500, despesas: 6200 },
-    { name: 'Jun', receitas: 8500, despesas: 5900 },
-    { name: 'Jul', receitas: 9000, despesas: 7100 },
-    { name: 'Ago', receitas: 8500, despesas: 6800 },
-    { name: 'Set', receitas: 8500, despesas: 8100 },
-    { name: 'Out', receitas: 8500, despesas: 6400 },
+    { name: 'Mai', receitas: 185000, despesas: 162000 },
+    { name: 'Jun', receitas: 285000, despesas: 259000 },
+    { name: 'Jul', receitas: 290000, despesas: 271000 },
+    { name: 'Ago', receitas: 285000, despesas: 268000 },
+    { name: 'Set', receitas: 285000, despesas: 281000 },
+    { name: 'Out', receitas: 300000, despesas: 250700 },
   ]
 
   const barChartConfig = {
@@ -66,7 +66,7 @@ export default function Reports() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="shadow-md border-blue-100/50">
           <CardHeader className="bg-gradient-to-r from-white to-blue-50/50 pb-4">
-            <CardTitle className="text-lg">Despesas por Categoria</CardTitle>
+            <CardTitle className="text-lg">Despesas por Unidade</CardTitle>
           </CardHeader>
           <CardContent className="h-[320px] pt-6">
             {pieData.length > 0 ? (
@@ -151,8 +151,8 @@ export default function Reports() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-orange-700 leading-relaxed">
-              Seus gastos com <strong>Alimentação</strong> estão 20% acima da média histórica deste
-              mês. Considere revisar seu orçamento.
+              Os custos da unidade <strong>Jau</strong> representam a maior parte de suas despesas.
+              Considere revisar o orçamento operacional.
             </p>
           </CardContent>
         </Card>
@@ -166,8 +166,8 @@ export default function Reports() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-green-700 leading-relaxed">
-              Você já economizou <strong>R$ 1.200,00</strong> este mês! Continue assim para atingir
-              sua meta de poupança.
+              O Saldo Geral está positivo! Você conseguiu manter o fluxo de caixa saudável entre as
+              unidades.
             </p>
           </CardContent>
         </Card>

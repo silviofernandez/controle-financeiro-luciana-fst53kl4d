@@ -17,45 +17,76 @@ export const useTransactions = () => useContext(TransactionContext)
 const MOCK_DATA: Transaction[] = [
   {
     id: '1',
-    tipo: 'receita',
-    descricao: 'Salário',
-    valor: 8500,
-    data: new Date().toISOString(),
-    categoria: 'Trabalho',
-    created_at: new Date().toISOString(),
+    tipo: 'despesa',
+    descricao: 'Custos Operacionais Jau',
+    valor: 184000,
+    data: '2026-01-15T10:00:00.000Z',
+    categoria: 'Outros',
+    unidade: 'Jau',
+    banco: 'Santander',
+    created_at: '2026-01-15T10:00:00.000Z',
   },
   {
     id: '2',
     tipo: 'despesa',
-    descricao: 'Aluguel',
-    valor: 2500,
-    data: new Date().toISOString(),
-    categoria: 'Casa',
-    created_at: new Date().toISOString(),
+    descricao: 'Folha e Fornecedores Pederneiras',
+    valor: 10500,
+    data: '2026-01-16T10:00:00.000Z',
+    categoria: 'Folha de Pagamento',
+    unidade: 'Pederneiras',
+    banco: 'Inter',
+    created_at: '2026-01-16T10:00:00.000Z',
   },
   {
     id: '3',
     tipo: 'despesa',
-    descricao: 'Supermercado',
-    valor: 850,
-    data: new Date(Date.now() - 86400000).toISOString(),
-    categoria: 'Alimentação',
-    created_at: new Date().toISOString(),
+    descricao: 'Manutenção L. Paulista',
+    valor: 16700,
+    data: '2026-01-17T10:00:00.000Z',
+    categoria: 'Fornecedores',
+    unidade: 'L. Paulista',
+    banco: 'BTG',
+    created_at: '2026-01-17T10:00:00.000Z',
   },
   {
     id: '4',
     tipo: 'despesa',
-    descricao: 'Uber',
-    valor: 45.5,
-    data: new Date(Date.now() - 86400000 * 2).toISOString(),
-    categoria: 'Transporte',
-    created_at: new Date().toISOString(),
+    descricao: 'Despesas Silvio',
+    valor: 39600,
+    data: '2026-01-18T10:00:00.000Z',
+    categoria: 'Outros',
+    unidade: 'Silvio',
+    banco: 'Nubank',
+    created_at: '2026-01-18T10:00:00.000Z',
+  },
+  {
+    id: '5',
+    tipo: 'receita',
+    descricao: 'Faturamento Geral Jan',
+    valor: 300000,
+    data: '2026-01-20T10:00:00.000Z',
+    categoria: 'Trabalho',
+    unidade: 'Geral',
+    banco: 'Santander',
+    created_at: '2026-01-20T10:00:00.000Z',
+  },
+  {
+    id: '6',
+    tipo: 'receita',
+    descricao: 'Saldo Financeiro Fechamento',
+    valor: 49200,
+    data: '2026-01-31T23:59:59.000Z',
+    categoria: 'Outros',
+    unidade: 'Geral',
+    banco: 'Outros',
+    isCheckpoint: true,
+    created_at: '2026-01-31T23:59:59.000Z',
   },
 ]
 
 export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem('@financeiro:transactions')
+    const saved = localStorage.getItem('@financeiro:transactions:v2')
     if (saved) return JSON.parse(saved)
     return MOCK_DATA
   })
@@ -63,7 +94,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [isSyncing, setIsSyncing] = useState(false)
 
   useEffect(() => {
-    localStorage.setItem('@financeiro:transactions', JSON.stringify(transactions))
+    localStorage.setItem('@financeiro:transactions:v2', JSON.stringify(transactions))
   }, [transactions])
 
   const addTransaction = (t: Omit<Transaction, 'id' | 'created_at'>) => {
@@ -86,9 +117,8 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const syncData = async () => {
     setIsSyncing(true)
     try {
-      // Mock API call to Google Sheets
       await new Promise((resolve) => setTimeout(resolve, 1500))
-      toast({ title: 'Sincronizado', description: 'Dados enviados para a planilha!' })
+      toast({ title: 'Sincronizado', description: 'Dados enviados para a nuvem!' })
     } catch (e) {
       toast({ title: 'Erro', description: 'Erro ao sincronizar.', variant: 'destructive' })
     } finally {

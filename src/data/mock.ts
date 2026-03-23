@@ -71,64 +71,7 @@ const rawFebData = `02/02|Jau|1610|up talentos , recrutamento santander|despesa|
 07/02|Jau|488.7|up talentos boleto vaga apoio santander|despesa|variavel|
 07/02|Silvio|445.47|caicara clube janeiro santander|despesa|fixo|
 07/02|Jau|319.94|leovaldo preto 312,74 santander|despesa|variavel|
-07/02|Jau|250|doacao catedral n senhora santander|despesa|variavel|
-09/02|Jau|148.99|leovaldo preto 145,63 santander|despesa|variavel|
-09/02|Jau|119.21|leovaldo preto 116,53 santander|despesa|variavel|
-09/02|Jau|175.62|vanderson pacheco santander|despesa|variavel|
-09/02|Jau|2650|up talentos recrutamento jose humberto santand|despesa|variavel|
-09/02|Pederneiras|45|cdl pederneiras santander|despesa|variavel|
-09/02|Jau|87|vivo smart empresas santander|despesa|fixo|
-09/02|Jau|100|rescisao gabriel dias santander|despesa|variavel|
-09/02|Geral|4041.71|saldo financeiro|receita||true
-10/02|Geral|320000|Faturamento Geral Fevereiro|receita||
-10/02|Jau|3200|maya atendimento santander|despesa|variavel|
-10/02|Jau|184.11|hospedaria santander|despesa|variavel|
-10/02|Jau|824.2|ferrucci santander|despesa|fixo|
-10/02|Jau|5255.6|integrale santander|despesa|variavel|
-10/02|Jau|438.58|linstel mais zap santander|despesa|variavel|
-10/02|Jau|405.71|luci dalva santander|despesa|variavel|
-10/02|Jau|356.34|unimed func santander|despesa|fixo|
-10/02|Jau|600.48|tecnosuper santander|despesa|variavel|
-10/02|Jau|153.52|imovpago santander|despesa|fixo|
-10/02|Jau|323.63|discovery solucoes santander|despesa|variavel|
-10/02|Jau|4674.15|lastro tecnologia santander|despesa|variavel|
-10/02|Jau|456.36|maqmiller santander|despesa|variavel|
-10/02|L. Paulista|600|faxina neuma santander 4|despesa|variavel|
-10/02|L. Paulista|114.53|assoc comercial santander|despesa|fixo|
-10/02|Pederneiras|591.55|vania elvira rossini santander. 2/2|despesa|variavel|
-10/02|Pederneiras|99.9|vero santander|despesa|fixo|
-10/02|Pederneiras|144.7|maq miller santander|despesa|variavel|
-10/02|Pederneiras|2000|ajuda de custo giovanni santander|despesa|fixo|
-10/02|Pederneiras|160|linetel santander|despesa|variavel|
-10/02|Silvio|2895.85|unimed corporativo santander|despesa|fixo|
-10/02|Silvio|20|vigia noturno d financeiro|despesa|variavel|
-10/02|Pederneiras|79.8|despesa refeicao ruan. mariana d financeiro|despesa|variavel|
-10/02|Geral|16.53|ajuste de caixa dinh faltando|despesa|variavel|
-10/02|Geral|2835|saldo financeiro|receita||true
-11/02|Jau|1197.23|multa fgts 40% bruna tiburcio santander|despesa|variavel|
-11/02|Jau|1200|adiantamento rose btg|despesa|fixo|
-11/02|Jau|1047.6|yak placas 2/4 santander|despesa|variavel|
-11/02|L. Paulista|1400|aluguel eduardo ferrucci santander|despesa|fixo|
-11/02|Jau|200|prolabore pedro d financeiro|despesa|fixo|
-11/02|Jau|0.09|desconto recebimento d financeiro|despesa|variavel|
-11/02|Geral|4505.4|saldo financeiro|receita||true
-12/02|Jau|4384.71|vox cartao tenda santander|despesa|variavel|
-12/02|Jau|269.79|dev de farmacia bruna tiburcio inter|despesa|variavel|
-12/02|Jau|4224.82|rescisao bruna tiburcio inter|despesa|variavel|
-12/02|Jau|214.88|tokio marine seguro santander|despesa|fixo|
-12/02|Jau|2696.75|transf santander luciana nu pag juros murilo|despesa|variavel|
-12/02|Silvio|737.08|cartao santander victor santander|despesa|variavel|
-12/02|Geral|1185.35|saldo financeiro|receita||true
-13/02|Jau|4000|marketing maicon santander|despesa|fixo|
-13/02|L. Paulista|2000|ajuda de custo eduardo ferrucci santander|despesa|fixo|
-13/02|Silvio|300|transferecia santander luciana inter|despesa|variavel|
-13/02|Silvio|20|doacao nosso lar d financeiro|despesa|variavel|
-13/02|Geral|1508.14|saldo financeiro|receita||true
-13/02|Silvio|298.24|claro casa silvio santander|despesa|fixo|
-16/02|Silvio|2000|transferencia santander luciana inter|despesa|variavel|
-16/02|Silvio|3900|transferencia btg luciana inter|despesa|variavel|
-16/02|Silvio|900|rosa lavanderia santander|despesa|variavel|
-16/02|Jau|250|outros jau|despesa|variavel|`
+07/02|Jau|250|doacao catedral n senhora santander|despesa|variavel|`
 
 export const getMockData = (): Transaction[] => {
   const janData: Transaction[] = [
@@ -191,17 +134,84 @@ export const getMockData = (): Transaction[] => {
       banco: 'Santander',
       created_at: '2026-01-20T10:00:00.000Z',
     },
+  ]
+
+  // Add specific mock data for Contribution Margin report calculations
+  const marginData: Transaction[] = [
     {
-      id: '6',
+      id: 'cm-1',
       tipo: 'receita',
-      descricao: 'Saldo Financeiro Fechamento',
-      valor: 49200,
-      data: '2026-01-31T23:59:59.000Z',
+      descricao: 'Comissão Venda Imóvel Jaú',
+      valor: 145000,
+      data: '2026-02-15T10:00:00.000Z',
+      categoria: 'Comissão',
+      unidade: 'Jau',
+      banco: 'Santander',
+      receitaTipo: 'comissao',
+      created_at: '2026-02-15T10:00:00.000Z',
+    },
+    {
+      id: 'cm-2',
+      tipo: 'despesa',
+      descricao: 'Despesa Operacional Jaú (Direta)',
+      valor: 42000,
+      data: '2026-02-16T10:00:00.000Z',
+      categoria: 'Fornecedores',
+      unidade: 'Jau',
+      banco: 'Santander',
+      despesaTipo: 'unitaria',
+      classificacao: 'variavel',
+      created_at: '2026-02-16T10:00:00.000Z',
+    },
+    {
+      id: 'cm-3',
+      tipo: 'receita',
+      descricao: 'Comissão Venda Imóvel Pederneiras',
+      valor: 82000,
+      data: '2026-02-17T10:00:00.000Z',
+      categoria: 'Comissão',
+      unidade: 'Pederneiras',
+      banco: 'Inter',
+      receitaTipo: 'comissao',
+      created_at: '2026-02-17T10:00:00.000Z',
+    },
+    {
+      id: 'cm-4',
+      tipo: 'despesa',
+      descricao: 'Despesa Operacional Pederneiras (Direta)',
+      valor: 28000,
+      data: '2026-02-18T10:00:00.000Z',
+      categoria: 'Fornecedores',
+      unidade: 'Pederneiras',
+      banco: 'Inter',
+      despesaTipo: 'unitaria',
+      classificacao: 'variavel',
+      created_at: '2026-02-18T10:00:00.000Z',
+    },
+    {
+      id: 'cm-5',
+      tipo: 'receita',
+      descricao: 'Comissão Lançamento Lençóis',
+      valor: 56000,
+      data: '2026-02-19T10:00:00.000Z',
+      categoria: 'Comissão',
+      unidade: 'L. Paulista',
+      banco: 'BTG',
+      receitaTipo: 'comissao',
+      created_at: '2026-02-19T10:00:00.000Z',
+    },
+    {
+      id: 'cm-6',
+      tipo: 'despesa',
+      descricao: 'Custo de Stand Lençóis (Direta)',
+      valor: 15500,
+      data: '2026-02-20T10:00:00.000Z',
       categoria: 'Outros',
-      unidade: 'Geral',
-      banco: 'Outros',
-      isCheckpoint: true,
-      created_at: '2026-01-31T23:59:59.000Z',
+      unidade: 'L. Paulista',
+      banco: 'BTG',
+      despesaTipo: 'unitaria',
+      classificacao: 'variavel',
+      created_at: '2026-02-20T10:00:00.000Z',
     },
   ]
 
@@ -226,5 +236,5 @@ export const getMockData = (): Transaction[] => {
       }
     })
 
-  return [...janData, ...febParsed]
+  return [...janData, ...marginData, ...febParsed]
 }

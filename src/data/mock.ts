@@ -73,6 +73,61 @@ const rawFebData = `02/02|Jau|1610|up talentos , recrutamento santander|despesa|
 07/02|Jau|319.94|leovaldo preto 312,74 santander|despesa|variavel|
 07/02|Jau|250|doacao catedral n senhora santander|despesa|variavel|`
 
+const ciaData: Transaction[] = [
+  {
+    id: 'cia-1',
+    tipo: 'despesa',
+    descricao: 'Assinatura Software ERP',
+    valor: 1500,
+    data: '2026-01-10T10:00:00.000Z',
+    categoria: 'Fornecedores',
+    unidade: 'Geral',
+    banco: 'Santander',
+    despesaTipo: 'cia',
+    classificacao: 'fixo',
+    created_at: '2026-01-10T10:00:00.000Z',
+  },
+  {
+    id: 'cia-2',
+    tipo: 'despesa',
+    descricao: 'Contabilidade Mensal',
+    valor: 2500,
+    data: '2026-01-15T10:00:00.000Z',
+    categoria: 'Fornecedores',
+    unidade: 'Geral',
+    banco: 'Inter',
+    despesaTipo: 'cia',
+    classificacao: 'fixo',
+    created_at: '2026-01-15T10:00:00.000Z',
+  },
+  {
+    id: 'cia-3',
+    tipo: 'despesa',
+    descricao: 'Marketing Institucional',
+    valor: 4500,
+    data: '2026-02-05T10:00:00.000Z',
+    categoria: 'Outros',
+    unidade: 'Geral',
+    banco: 'Santander',
+    despesaTipo: 'cia',
+    classificacao: 'variavel',
+    created_at: '2026-02-05T10:00:00.000Z',
+  },
+  {
+    id: 'cia-4',
+    tipo: 'despesa',
+    descricao: 'Assessoria Jurídica',
+    valor: 3000,
+    data: '2026-03-20T10:00:00.000Z',
+    categoria: 'Fornecedores',
+    unidade: 'Geral',
+    banco: 'BTG',
+    despesaTipo: 'cia',
+    classificacao: 'fixo',
+    created_at: '2026-03-20T10:00:00.000Z',
+  },
+]
+
 export const getMockData = (): Transaction[] => {
   const janData: Transaction[] = [
     {
@@ -136,7 +191,6 @@ export const getMockData = (): Transaction[] => {
     },
   ]
 
-  // Add specific mock data for Contribution Margin report calculations
   const marginData: Transaction[] = [
     {
       id: 'cm-1',
@@ -236,5 +290,5 @@ export const getMockData = (): Transaction[] => {
       }
     })
 
-  return [...janData, ...marginData, ...febParsed]
+  return [...janData, ...marginData, ...ciaData, ...febParsed]
 }

@@ -1,5 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, PlusCircle, PieChart, Settings, Calculator, Activity } from 'lucide-react'
+import {
+  LayoutDashboard,
+  PlusCircle,
+  PieChart,
+  Settings,
+  Calculator,
+  Activity,
+  Receipt,
+} from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +23,7 @@ const items = [
   { title: 'Inserir Dados', url: '/#inserir', icon: PlusCircle },
   { title: 'Calculadora de Comissão', url: '/comissoes', icon: Calculator },
   { title: 'Margem de Contribuição', url: '/margem-contribuicao', icon: Activity },
+  { title: 'Custos Operacionais', url: '/custos-operacionais', icon: Receipt },
   { title: 'Relatórios', url: '/relatorios', icon: PieChart },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ]

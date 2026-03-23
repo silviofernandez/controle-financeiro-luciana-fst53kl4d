@@ -1,6 +1,15 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, FormEvent, ChangeEvent } from 'react'
 import { useTransactions } from '@/contexts/TransactionContext'
-import { UNIDADES, BANCOS, Unidade, Banco, ClassificacaoDespesa, ReceitaTipo } from '@/types'
+import { useBrokers } from '@/contexts/BrokerContext'
+import {
+  UNIDADES,
+  BANCOS,
+  Unidade,
+  Banco,
+  ClassificacaoDespesa,
+  ReceitaTipo,
+  Broker,
+} from '@/types'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -34,8 +43,80 @@ const BANCO_MAP: Record<string, Banco> = {
   neon: 'Neon',
 }
 
+function BrokerSelectField({
+  label,
+  value,
+  onChange,
+  brokers,
+  nivel,
+  onNivelChange,
+  pct,
+  onPctChange,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  brokers: Broker[]
+  nivel: string
+  onNivelChange: (v: string) => void
+  pct: string
+  onPctChange: (v: string) => void
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <Label>{label}</Label>
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger className="bg-white">
+            <SelectValue placeholder="Selecione" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="nao_informado">Não informado</SelectItem>
+            {brokers.map((b) => (
+              <SelectItem key={b.id} value={b.id}>
+                {b.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {value && value !== 'nao_informado' && (
+        <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Nível</Label>
+            <Select value={nivel} onValueChange={onNivelChange}>
+              <SelectTrigger className="bg-white h-8 text-xs">
+                <SelectValue placeholder="Nível" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Júnior">Júnior</SelectItem>
+                <SelectItem value="Pleno">Pleno</SelectItem>
+                <SelectItem value="Sênior">Sênior</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Porcentagem (%)</Label>
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={pct}
+              onChange={(e) => onPctChange(e.target.value)}
+              className="bg-white h-8 text-xs font-mono"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function TransactionForm() {
   const { addTransaction, transactions } = useTransactions()
+  const { brokers } = useBrokers()
+
   const [tipo, setTipo] = useState<'receita' | 'despesa'>('despesa')
   const [classificacao, setClassificacao] = useState<ClassificacaoDespesa>('variavel')
   const [receitaTipo, setReceitaTipo] = useState<ReceitaTipo>('outro')
@@ -49,7 +130,13 @@ export function TransactionForm() {
 
   // Commission fields
   const [corretor, setCorretor] = useState('')
+  const [corretorNivel, setCorretorNivel] = useState('')
+  const [corretorPorcentagem, setCorretorPorcentagem] = useState('')
+
   const [captador, setCaptador] = useState('')
+  const [captadorNivel, setCaptadorNivel] = useState('')
+  const [captadorPorcentagem, setCaptadorPorcentagem] = useState('')
+
   const [notaFiscal, setNotaFiscal] = useState(false)
   const [juridico, setJuridico] = useState(false)
   const [juridicoValorInput, setJuridicoValorInput] = useState(() => formatCurrency(200))
@@ -114,8 +201,36 @@ export function TransactionForm() {
     }
   }, [descricao, tipo])
 
-  const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleValorChange = (e: ChangeEvent<HTMLInputElement>) => {
     setValorInput(formatCurrency(parseCurrency(e.target.value)))
+  }
+
+  const handleCorretorChange = (val: string) => {
+    setCorretor(val)
+    if (val === 'nao_informado') {
+      setCorretorNivel('')
+      setCorretorPorcentagem('')
+    } else {
+      const b = brokers.find((x) => x.id === val)
+      if (b) {
+        setCorretorNivel(b.level)
+        setCorretorPorcentagem(b.percentage.toString())
+      }
+    }
+  }
+
+  const handleCaptadorChange = (val: string) => {
+    setCaptador(val)
+    if (val === 'nao_informado') {
+      setCaptadorNivel('')
+      setCaptadorPorcentagem('')
+    } else {
+      const b = brokers.find((x) => x.id === val)
+      if (b) {
+        setCaptadorNivel(b.level)
+        setCaptadorPorcentagem(b.percentage.toString())
+      }
+    }
   }
 
   const executeSubmit = async () => {
@@ -134,10 +249,14 @@ export function TransactionForm() {
       ...(tipo === 'receita' && !isCheckpoint
         ? {
             receitaTipo,
-            corretor:
-              receitaTipo === 'comissao' && corretor !== 'nao_informado' ? corretor : undefined,
-            captador:
-              receitaTipo === 'comissao' && captador !== 'nao_informado' ? captador : undefined,
+            corretor: corretor !== 'nao_informado' && corretor ? corretor : undefined,
+            corretorNivel: corretor !== 'nao_informado' && corretor ? corretorNivel : undefined,
+            corretorPorcentagem:
+              corretor !== 'nao_informado' && corretor ? Number(corretorPorcentagem) : undefined,
+            captador: captador !== 'nao_informado' && captador ? captador : undefined,
+            captadorNivel: captador !== 'nao_informado' && captador ? captadorNivel : undefined,
+            captadorPorcentagem:
+              captador !== 'nao_informado' && captador ? Number(captadorPorcentagem) : undefined,
             notaFiscal: receitaTipo === 'comissao' ? notaFiscal : undefined,
             juridico: receitaTipo === 'comissao' ? juridico : undefined,
             juridicoValor:
@@ -146,12 +265,15 @@ export function TransactionForm() {
         : {}),
     })
 
-    // Reset form
     setDescricao('')
     setValorInput('')
     setReceitaTipo('outro')
     setCorretor('')
+    setCorretorNivel('')
+    setCorretorPorcentagem('')
     setCaptador('')
+    setCaptadorNivel('')
+    setCaptadorPorcentagem('')
     setNotaFiscal(false)
     setJuridico(false)
     setJuridicoValorInput(formatCurrency(200))
@@ -160,7 +282,7 @@ export function TransactionForm() {
     setConfirmDialogVisible(false)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     if (!descricao || !valorInput) return
 
@@ -241,29 +363,27 @@ export function TransactionForm() {
 
             {tipo === 'receita' && !isCheckpoint && receitaTipo === 'comissao' && (
               <div className="space-y-4 p-4 bg-emerald-50/50 rounded-lg border border-emerald-100 animate-in fade-in zoom-in-95 duration-200">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Corretor</Label>
-                    <Select value={corretor} onValueChange={setCorretor}>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="nao_informado">Não informado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Captador</Label>
-                    <Select value={captador} onValueChange={setCaptador}>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="nao_informado">Não informado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <BrokerSelectField
+                    label="Corretor"
+                    value={corretor}
+                    onChange={handleCorretorChange}
+                    brokers={brokers}
+                    nivel={corretorNivel}
+                    onNivelChange={setCorretorNivel}
+                    pct={corretorPorcentagem}
+                    onPctChange={setCorretorPorcentagem}
+                  />
+                  <BrokerSelectField
+                    label="Captador"
+                    value={captador}
+                    onChange={handleCaptadorChange}
+                    brokers={brokers}
+                    nivel={captadorNivel}
+                    onNivelChange={setCaptadorNivel}
+                    pct={captadorPorcentagem}
+                    onPctChange={setCaptadorPorcentagem}
+                  />
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between">

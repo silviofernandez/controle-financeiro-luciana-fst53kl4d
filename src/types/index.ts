@@ -15,6 +15,15 @@ export type Banco =
   | 'Neon'
   | 'Outros'
 
+export type BrokerLevel = 'Júnior' | 'Pleno' | 'Sênior' | string
+
+export interface Broker {
+  id: string
+  name: string
+  level: BrokerLevel
+  percentage: number
+}
+
 export interface Transaction {
   id: string
   tipo: TransactionType
@@ -28,7 +37,11 @@ export interface Transaction {
   classificacao?: ClassificacaoDespesa
   receitaTipo?: ReceitaTipo
   corretor?: string
+  corretorNivel?: string
+  corretorPorcentagem?: number
   captador?: string
+  captadorNivel?: string
+  captadorPorcentagem?: number
   notaFiscal?: boolean
   juridico?: boolean
   juridicoValor?: number

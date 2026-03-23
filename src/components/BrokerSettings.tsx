@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState, FormEvent } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,23 +20,11 @@ import {
 } from '@/components/ui/table'
 import { Edit2, Trash2, Plus, Save, X } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
-
-type BrokerLevel = 'Júnior' | 'Pleno' | 'Sênior'
-
-interface Broker {
-  id: string
-  name: string
-  level: BrokerLevel
-  percentage: number
-}
-
-const INITIAL_BROKERS: Broker[] = [
-  { id: '1', name: 'João Silva', level: 'Pleno', percentage: 38 },
-  { id: '2', name: 'Maria Souza', level: 'Sênior', percentage: 43 },
-]
+import { useBrokers } from '@/contexts/BrokerContext'
+import { Broker, BrokerLevel } from '@/types'
 
 export function BrokerSettings() {
-  const [brokers, setBrokers] = useState<Broker[]>(INITIAL_BROKERS)
+  const { brokers, addBroker, updateBroker, deleteBroker } = useBrokers()
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const [name, setName] = useState('')
@@ -58,11 +46,11 @@ export function BrokerSettings() {
   }
 
   const handleDelete = (id: string) => {
-    setBrokers(brokers.filter((b) => b.id !== id))
+    deleteBroker(id)
     toast({ title: 'Excluído', description: 'Corretor removido com sucesso.' })
   }
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = (e: FormEvent) => {
     e.preventDefault()
     if (!name || !level || !percentage) {
       toast({ title: 'Atenção', description: 'Preencha todos os campos.', variant: 'destructive' })
@@ -77,10 +65,10 @@ export function BrokerSettings() {
     }
 
     if (editingId) {
-      setBrokers(brokers.map((b) => (b.id === editingId ? newBroker : b)))
+      updateBroker(newBroker)
       toast({ title: 'Sucesso', description: 'Corretor atualizado com sucesso.' })
     } else {
-      setBrokers([...brokers, newBroker])
+      addBroker(newBroker)
       toast({ title: 'Sucesso', description: 'Corretor adicionado com sucesso.' })
     }
 

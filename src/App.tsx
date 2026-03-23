@@ -10,25 +10,28 @@ import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import { TransactionProvider } from './contexts/TransactionContext'
 import { CommissionProvider } from './contexts/CommissionContext'
+import { BrokerProvider } from './contexts/BrokerContext'
 
 const App = () => (
   <TransactionProvider>
     <CommissionProvider>
-      <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path="/" element={<Index />} />
-              <Route path="/relatorios" element={<Reports />} />
-              <Route path="/comissoes" element={<Commissions />} />
-              <Route path="/configuracoes" element={<Settings />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </TooltipProvider>
-      </BrowserRouter>
+      <BrokerProvider>
+        <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              <Route element={<Layout />}>
+                <Route path="/" element={<Index />} />
+                <Route path="/relatorios" element={<Reports />} />
+                <Route path="/comissoes" element={<Commissions />} />
+                <Route path="/configuracoes" element={<Settings />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </TooltipProvider>
+        </BrowserRouter>
+      </BrokerProvider>
     </CommissionProvider>
   </TransactionProvider>
 )

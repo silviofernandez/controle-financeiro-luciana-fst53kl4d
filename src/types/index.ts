@@ -2,6 +2,7 @@ export type TransactionType = 'receita' | 'despesa'
 
 export type ClassificacaoDespesa = 'fixo' | 'variavel' | null
 export type ReceitaTipo = 'comissao' | 'outro'
+export type DespesaTipo = 'unitaria' | 'cia'
 
 export type Unidade = 'Jau' | 'Pederneiras' | 'L. Paulista' | 'Silvio' | 'Geral'
 export type Banco =
@@ -36,6 +37,7 @@ export interface Transaction {
   isCheckpoint?: boolean
   classificacao?: ClassificacaoDespesa
   receitaTipo?: ReceitaTipo
+  despesaTipo?: DespesaTipo
   corretor?: string
   corretorNivel?: string
   corretorPorcentagem?: number

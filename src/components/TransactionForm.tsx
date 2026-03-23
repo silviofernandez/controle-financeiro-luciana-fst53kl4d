@@ -2,7 +2,16 @@ import { useState, useEffect, useRef, useMemo, FormEvent, ChangeEvent } from 're
 import { useTransactions } from '@/contexts/TransactionContext'
 import { useBrokers } from '@/contexts/BrokerContext'
 import { useCommissions } from '@/contexts/CommissionContext'
-import { UNIDADES, BANCOS, Unidade, Banco, ClassificacaoDespesa, ReceitaTipo } from '@/types'
+import {
+  UNIDADES,
+  BANCOS,
+  CATEGORIES,
+  Unidade,
+  Banco,
+  ClassificacaoDespesa,
+  ReceitaTipo,
+  DespesaTipo,
+} from '@/types'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -46,6 +55,8 @@ export function TransactionForm() {
   const [tipo, setTipo] = useState<'receita' | 'despesa'>('despesa')
   const [classificacao, setClassificacao] = useState<ClassificacaoDespesa>('variavel')
   const [receitaTipo, setReceitaTipo] = useState<ReceitaTipo>('outro')
+  const [despesaTipo, setDespesaTipo] = useState<DespesaTipo>('unitaria')
+  const [categoria, setCategoria] = useState<string>('Outros')
   const [descricao, setDescricao] = useState('')
   const [valorInput, setValorInput] = useState('')
   const [data, setData] = useState(new Date().toISOString().split('T')[0])
@@ -70,6 +81,8 @@ export function TransactionForm() {
 
   const wrapperRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const isCommission = tipo === 'receita' && !isCheckpoint && receitaTipo === 'comissao'
 
   const historicDescriptions = useMemo(() => {
     const relevantTransactions = transactions.filter((t) => t.tipo === tipo && !t.isCheckpoint)
@@ -127,6 +140,18 @@ export function TransactionForm() {
     }
   }, [descricao, tipo])
 
+  useEffect(() => {
+    if (tipo === 'despesa' && !isCheckpoint) {
+      if (despesaTipo === 'cia') {
+        setUnidade('Geral')
+      } else if (despesaTipo === 'unitaria') {
+        if (!['Jau', 'Pederneiras', 'L. Paulista'].includes(unidade)) {
+          setUnidade('Jau')
+        }
+      }
+    }
+  }, [despesaTipo, tipo, isCheckpoint, unidade])
+
   const handleValorChange = (e: ChangeEvent<HTMLInputElement>) => {
     setValorInput(formatCurrency(parseCurrency(e.target.value)))
   }
@@ -155,17 +180,20 @@ export function TransactionForm() {
       descricao: descricao.trim(),
       valor: parseCurrency(valorInput),
       data: new Date(data).toISOString(),
-      categoria: 'Outros',
-      unidade,
+      categoria: isCommission ? 'Comissão' : categoria,
+      unidade: tipo === 'despesa' && despesaTipo === 'cia' && !isCheckpoint ? 'Geral' : unidade,
       banco,
       isCheckpoint,
       classificacao: tipo === 'despesa' && !isCheckpoint ? classificacao : null,
       receitaTipo: tipo === 'receita' && !isCheckpoint ? receitaTipo : undefined,
+      despesaTipo: tipo === 'despesa' && !isCheckpoint ? despesaTipo : undefined,
     })
 
     setDescricao('')
     setValorInput('')
     setReceitaTipo('outro')
+    setDespesaTipo('unitaria')
+    setCategoria('Outros')
     setSelectedTeamId('')
     setParticipantNames({})
     setSelectedVariations({})
@@ -209,6 +237,7 @@ export function TransactionForm() {
         unidade,
         banco,
         classificacao: 'variavel',
+        despesaTipo: 'unitaria',
         equipe: team.name,
       })
     })
@@ -299,7 +328,29 @@ export function TransactionForm() {
       return
     }
 
-    if (!descricao || !valorInput) return
+    if (!data || !descricao || !valorInput || !categoria) {
+      toast({
+        title: 'Atenção',
+        description: 'Preencha todos os campos obrigatórios.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (tipo === 'despesa' && !isCheckpoint) {
+      if (!despesaTipo) {
+        toast({
+          title: 'Atenção',
+          description: 'Selecione o tipo de despesa.',
+          variant: 'destructive',
+        })
+        return
+      }
+      if (despesaTipo === 'unitaria' && !unidade) {
+        toast({ title: 'Atenção', description: 'Selecione a unidade.', variant: 'destructive' })
+        return
+      }
+    }
 
     if (!isCheckpoint) {
       const lowerDesc = descricao.trim().toLowerCase()
@@ -312,8 +363,6 @@ export function TransactionForm() {
 
     executeSubmit()
   }
-
-  const isCommission = tipo === 'receita' && !isCheckpoint && receitaTipo === 'comissao'
 
   return (
     <>
@@ -557,15 +606,19 @@ export function TransactionForm() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Unidade</Label>
-                <Select value={unidade} onValueChange={(v: Unidade) => setUnidade(v)}>
+                <Label>Categoria</Label>
+                <Select
+                  value={isCommission ? 'Comissão' : categoria}
+                  onValueChange={setCategoria}
+                  disabled={isCommission}
+                >
                   <SelectTrigger className="bg-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {UNIDADES.map((u) => (
-                      <SelectItem key={u} value={u}>
-                        {u}
+                    {CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -587,6 +640,56 @@ export function TransactionForm() {
                 </Select>
               </div>
             </div>
+
+            {tipo === 'despesa' && !isCheckpoint ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Tipo de Despesa</Label>
+                  <Select value={despesaTipo} onValueChange={(v: DespesaTipo) => setDespesaTipo(v)}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unitaria">Despesa Unitária</SelectItem>
+                      <SelectItem value="cia">Despesa da Cia</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {despesaTipo === 'unitaria' && (
+                  <div className="space-y-1.5 animate-in fade-in zoom-in-95 duration-200">
+                    <Label>Unidade</Label>
+                    <Select value={unidade} onValueChange={(v: Unidade) => setUnidade(v)}>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Jau">Jaú</SelectItem>
+                        <SelectItem value="Pederneiras">Pederneiras</SelectItem>
+                        <SelectItem value="L. Paulista">Lençóis</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Unidade</Label>
+                  <Select value={unidade} onValueChange={(v: Unidade) => setUnidade(v)}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNIDADES.map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u === 'Jau' ? 'Jaú' : u === 'L. Paulista' ? 'Lençóis' : u}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center space-x-2 pt-1">
               <Checkbox

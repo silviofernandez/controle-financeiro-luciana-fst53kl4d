@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, FormEvent, ChangeEvent } from 'react'
 import { useTransactions } from '@/contexts/TransactionContext'
 import { useBrokers } from '@/contexts/BrokerContext'
+import { useCommissions } from '@/contexts/CommissionContext'
 import {
   UNIDADES,
   BANCOS,
@@ -16,7 +17,7 @@ import { Label } from './ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Checkbox } from './ui/checkbox'
-import { formatCurrency, parseCurrency } from '@/lib/utils'
+import { cn, formatCurrency, parseCurrency } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
 import {
   AlertDialog,
@@ -52,6 +53,8 @@ function BrokerSelectField({
   onNivelChange,
   pct,
   onPctChange,
+  hideLevel = false,
+  readOnlyPct = false,
 }: {
   label: string
   value: string
@@ -61,6 +64,8 @@ function BrokerSelectField({
   onNivelChange: (v: string) => void
   pct: string
   onPctChange: (v: string) => void
+  hideLevel?: boolean
+  readOnlyPct?: boolean
 }) {
   return (
     <div className="space-y-3">
@@ -81,20 +86,27 @@ function BrokerSelectField({
         </Select>
       </div>
       {value && value !== 'nao_informado' && (
-        <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Nível</Label>
-            <Select value={nivel} onValueChange={onNivelChange}>
-              <SelectTrigger className="bg-white h-8 text-xs">
-                <SelectValue placeholder="Nível" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Júnior">Júnior</SelectItem>
-                <SelectItem value="Pleno">Pleno</SelectItem>
-                <SelectItem value="Sênior">Sênior</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div
+          className={cn(
+            'grid gap-2 animate-in fade-in slide-in-from-top-2',
+            hideLevel ? 'grid-cols-1' : 'grid-cols-2',
+          )}
+        >
+          {!hideLevel && (
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Nível</Label>
+              <Select value={nivel} onValueChange={onNivelChange}>
+                <SelectTrigger className="bg-white h-8 text-xs">
+                  <SelectValue placeholder="Nível" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Júnior">Júnior</SelectItem>
+                  <SelectItem value="Pleno">Pleno</SelectItem>
+                  <SelectItem value="Sênior">Sênior</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Porcentagem (%)</Label>
             <Input
@@ -104,7 +116,11 @@ function BrokerSelectField({
               step="0.01"
               value={pct}
               onChange={(e) => onPctChange(e.target.value)}
-              className="bg-white h-8 text-xs font-mono"
+              disabled={readOnlyPct}
+              className={cn(
+                'bg-white h-8 text-xs font-mono',
+                readOnlyPct && 'bg-slate-50 text-slate-500 cursor-not-allowed',
+              )}
             />
           </div>
         </div>
@@ -116,6 +132,7 @@ function BrokerSelectField({
 export function TransactionForm() {
   const { addTransaction, transactions } = useTransactions()
   const { brokers } = useBrokers()
+  const { teams } = useCommissions()
 
   const [tipo, setTipo] = useState<'receita' | 'despesa'>('despesa')
   const [classificacao, setClassificacao] = useState<ClassificacaoDespesa>('variavel')
@@ -144,6 +161,19 @@ export function TransactionForm() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [confirmDialogVisible, setConfirmDialogVisible] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
+
+  const captadorDefaultPct = useMemo(() => {
+    const captadorRule = teams
+      .flatMap((t) => t.rules)
+      .find((r) => r.role.toLowerCase() === 'captador')
+    return captadorRule?.variations[0]?.value ?? 5
+  }, [teams])
+
+  useEffect(() => {
+    if (captador && captador !== 'nao_informado') {
+      setCaptadorPorcentagem(captadorDefaultPct.toString())
+    }
+  }, [captadorDefaultPct, captador])
 
   const despesaDescriptions = useMemo(() => {
     const despesas = transactions.filter((t) => t.tipo === 'despesa')
@@ -225,11 +255,8 @@ export function TransactionForm() {
       setCaptadorNivel('')
       setCaptadorPorcentagem('')
     } else {
-      const b = brokers.find((x) => x.id === val)
-      if (b) {
-        setCaptadorNivel(b.level)
-        setCaptadorPorcentagem(b.percentage.toString())
-      }
+      setCaptadorNivel('')
+      setCaptadorPorcentagem(captadorDefaultPct.toString())
     }
   }
 
@@ -383,6 +410,8 @@ export function TransactionForm() {
                     onNivelChange={setCaptadorNivel}
                     pct={captadorPorcentagem}
                     onPctChange={setCaptadorPorcentagem}
+                    hideLevel={true}
+                    readOnlyPct={true}
                   />
                 </div>
 

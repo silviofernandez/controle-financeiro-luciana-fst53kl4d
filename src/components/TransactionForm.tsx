@@ -29,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from './ui/alert-dialog'
+import { CommissionSummaryModal, SummaryData } from './CommissionSummaryModal'
 
 const BANCO_MAP: Record<string, Banco> = {
   santander: 'Santander',
@@ -160,6 +161,8 @@ export function TransactionForm() {
 
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [confirmDialogVisible, setConfirmDialogVisible] = useState(false)
+  const [summaryModalVisible, setSummaryModalVisible] = useState(false)
+  const [summaryData, setSummaryData] = useState<SummaryData[]>([])
   const wrapperRef = useRef<HTMLDivElement>(null)
 
   const captadorDefaultPct = useMemo(() => {
@@ -309,6 +312,11 @@ export function TransactionForm() {
     setConfirmDialogVisible(false)
   }
 
+  const handleConfirmCommission = async () => {
+    await executeSubmit()
+    setSummaryModalVisible(false)
+  }
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     if (!descricao || !valorInput) return
@@ -320,6 +328,32 @@ export function TransactionForm() {
         setConfirmDialogVisible(true)
         return
       }
+    }
+
+    if (tipo === 'receita' && !isCheckpoint && receitaTipo === 'comissao') {
+      const gross = parseCurrency(valorInput)
+      const taxAmount = notaFiscal ? gross * 0.15 : 0
+      const legalAmount = juridico ? parseCurrency(juridicoValorInput) : 0
+      const net = Math.max(0, gross - taxAmount - legalAmount)
+
+      const corretorPct = Number(corretorPorcentagem) || 0
+      const captadorPct = Number(captadorPorcentagem) || 0
+
+      const corretorVal = net * (corretorPct / 100)
+      const captadorVal = net * (captadorPct / 100)
+      const rest = net - corretorVal - captadorVal
+
+      const data: SummaryData[] = [
+        { id: 'corretor', role: 'Corretor', value: corretorVal },
+        { id: 'captador', role: 'Captador', value: captadorVal },
+        { id: 'imobiliaria', role: 'Imobiliária', value: rest },
+        { id: 'impostos', role: 'Impostos', value: taxAmount },
+        { id: 'juridico', role: 'Jurídico', value: legalAmount },
+      ].filter((x) => x.value > 0)
+
+      setSummaryData(data)
+      setSummaryModalVisible(true)
+      return
     }
 
     executeSubmit()
@@ -575,6 +609,14 @@ export function TransactionForm() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CommissionSummaryModal
+        open={summaryModalVisible}
+        onOpenChange={setSummaryModalVisible}
+        data={summaryData}
+        onConfirm={handleConfirmCommission}
+        loading={loading}
+      />
     </>
   )
 }

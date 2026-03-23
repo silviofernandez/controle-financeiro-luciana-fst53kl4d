@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useTransactions } from '@/contexts/TransactionContext'
-import { UNIDADES, BANCOS, Unidade, Banco, ClassificacaoDespesa } from '@/types'
+import { UNIDADES, BANCOS, Unidade, Banco, ClassificacaoDespesa, ReceitaTipo } from '@/types'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -38,6 +38,7 @@ export function TransactionForm() {
   const { addTransaction, transactions } = useTransactions()
   const [tipo, setTipo] = useState<'receita' | 'despesa'>('despesa')
   const [classificacao, setClassificacao] = useState<ClassificacaoDespesa>('variavel')
+  const [receitaTipo, setReceitaTipo] = useState<ReceitaTipo>('outro')
   const [descricao, setDescricao] = useState('')
   const [valorInput, setValorInput] = useState('')
   const [data, setData] = useState(new Date().toISOString().split('T')[0])
@@ -45,6 +46,13 @@ export function TransactionForm() {
   const [banco, setBanco] = useState<Banco>('Outros')
   const [isCheckpoint, setIsCheckpoint] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  // Commission fields
+  const [corretor, setCorretor] = useState('')
+  const [captador, setCaptador] = useState('')
+  const [notaFiscal, setNotaFiscal] = useState(false)
+  const [juridico, setJuridico] = useState(false)
+  const [juridicoValorInput, setJuridicoValorInput] = useState(() => formatCurrency(200))
 
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [confirmDialogVisible, setConfirmDialogVisible] = useState(false)
@@ -71,9 +79,7 @@ export function TransactionForm() {
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   useEffect(() => {
@@ -125,9 +131,31 @@ export function TransactionForm() {
       banco,
       isCheckpoint,
       classificacao: tipo === 'despesa' && !isCheckpoint ? classificacao : null,
+      ...(tipo === 'receita' && !isCheckpoint
+        ? {
+            receitaTipo,
+            corretor:
+              receitaTipo === 'comissao' && corretor !== 'nao_informado' ? corretor : undefined,
+            captador:
+              receitaTipo === 'comissao' && captador !== 'nao_informado' ? captador : undefined,
+            notaFiscal: receitaTipo === 'comissao' ? notaFiscal : undefined,
+            juridico: receitaTipo === 'comissao' ? juridico : undefined,
+            juridicoValor:
+              receitaTipo === 'comissao' ? parseCurrency(juridicoValorInput) : undefined,
+          }
+        : {}),
     })
+
+    // Reset form
     setDescricao('')
     setValorInput('')
+    setReceitaTipo('outro')
+    setCorretor('')
+    setCaptador('')
+    setNotaFiscal(false)
+    setJuridico(false)
+    setJuridicoValorInput(formatCurrency(200))
+
     setLoading(false)
     setConfirmDialogVisible(false)
   }
@@ -189,6 +217,90 @@ export function TransactionForm() {
                 >
                   Custo Variável
                 </button>
+              </div>
+            )}
+
+            {tipo === 'receita' && !isCheckpoint && (
+              <div className="flex bg-slate-50 border border-slate-100 p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setReceitaTipo('comissao')}
+                  className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${receitaTipo === 'comissao' ? 'bg-white text-emerald-600 shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  Comissão
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReceitaTipo('outro')}
+                  className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${receitaTipo === 'outro' ? 'bg-white text-emerald-600 shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  Outro
+                </button>
+              </div>
+            )}
+
+            {tipo === 'receita' && !isCheckpoint && receitaTipo === 'comissao' && (
+              <div className="space-y-4 p-4 bg-emerald-50/50 rounded-lg border border-emerald-100 animate-in fade-in zoom-in-95 duration-200">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Corretor</Label>
+                    <Select value={corretor} onValueChange={setCorretor}>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nao_informado">Não informado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Captador</Label>
+                    <Select value={captador} onValueChange={setCaptador}>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nao_informado">Não informado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between">
+                  <div className="flex space-x-6">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="notaFiscal"
+                        checked={notaFiscal}
+                        onCheckedChange={(c) => setNotaFiscal(c === true)}
+                      />
+                      <Label htmlFor="notaFiscal" className="text-sm font-normal cursor-pointer">
+                        Nota Fiscal
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="juridico"
+                        checked={juridico}
+                        onCheckedChange={(c) => setJuridico(c === true)}
+                      />
+                      <Label htmlFor="juridico" className="text-sm font-normal cursor-pointer">
+                        Jurídico
+                      </Label>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2 w-full sm:w-1/2">
+                    <Label className="text-sm shrink-0">Valor Jurídico</Label>
+                    <Input
+                      value={juridicoValorInput}
+                      onChange={(e) =>
+                        setJuridicoValorInput(formatCurrency(parseCurrency(e.target.value)))
+                      }
+                      className="bg-white font-mono h-9"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 

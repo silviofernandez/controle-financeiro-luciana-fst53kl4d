@@ -1,6 +1,7 @@
 export type TransactionType = 'receita' | 'despesa'
 
 export type ClassificacaoDespesa = 'fixo' | 'variavel' | null
+export type ReceitaTipo = 'comissao' | 'outro'
 
 export type Unidade = 'Jau' | 'Pederneiras' | 'L. Paulista' | 'Silvio' | 'Geral'
 export type Banco =
@@ -25,6 +26,12 @@ export interface Transaction {
   banco: Banco
   isCheckpoint?: boolean
   classificacao?: ClassificacaoDespesa
+  receitaTipo?: ReceitaTipo
+  corretor?: string
+  captador?: string
+  notaFiscal?: boolean
+  juridico?: boolean
+  juridicoValor?: number
   created_at: string
 }
 

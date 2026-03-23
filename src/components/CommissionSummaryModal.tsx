@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ import { Loader2 } from 'lucide-react'
 export interface SummaryData {
   id: string
   role: string
+  name?: string
   value: number
 }
 
@@ -39,7 +41,7 @@ interface CommissionSummaryModalProps {
   loading?: boolean
 }
 
-const chartConfig = {
+const baseChartConfig = {
   corretor: { label: 'Corretor', color: '#3b82f6' },
   captador: { label: 'Captador', color: '#10b981' },
   imobiliaria: { label: 'Imobiliária', color: '#8b5cf6' },
@@ -54,6 +56,29 @@ export function CommissionSummaryModal({
   onConfirm,
   loading,
 }: CommissionSummaryModalProps) {
+  const dynamicConfig = useMemo(() => {
+    const config: any = { ...baseChartConfig }
+    const fallbackColors = [
+      '#0ea5e9',
+      '#ec4899',
+      '#d946ef',
+      '#84cc16',
+      '#64748b',
+      '#14b8a6',
+      '#f43f5e',
+    ]
+
+    data.forEach((item, index) => {
+      if (!config[item.id]) {
+        config[item.id] = {
+          label: item.role,
+          color: fallbackColors[index % fallbackColors.length],
+        }
+      }
+    })
+    return config
+  }, [data])
+
   const total = data.reduce((acc, curr) => acc + curr.value, 0)
 
   return (
@@ -64,7 +89,7 @@ export function CommissionSummaryModal({
         </DialogHeader>
 
         <div className="grid gap-6 py-4">
-          <ChartContainer config={chartConfig} className="h-[250px] w-full pb-4">
+          <ChartContainer config={dynamicConfig} className="h-[250px] w-full pb-4">
             <PieChart>
               <ChartTooltip
                 cursor={false}
@@ -78,7 +103,7 @@ export function CommissionSummaryModal({
                             style={{ backgroundColor: item.payload.fill }}
                           />
                           <span className="text-muted-foreground">
-                            {chartConfig[name as keyof typeof chartConfig]?.label || name}
+                            {dynamicConfig[name as string]?.label || name}
                           </span>
                         </div>
                         <span className="font-mono font-medium tabular-nums text-foreground">
@@ -108,14 +133,21 @@ export function CommissionSummaryModal({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Papel</TableHead>
+                <TableHead>Papel / Profissional</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.role}</TableCell>
+                  <TableCell className="font-medium">
+                    {item.role}
+                    {item.name && item.name !== 'nao_informado' && (
+                      <span className="text-xs text-muted-foreground font-normal block">
+                        {item.name}
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right font-mono">
                     {formatCurrency(item.value)}
                   </TableCell>

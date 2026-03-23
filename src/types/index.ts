@@ -45,6 +45,7 @@ export interface Transaction {
   notaFiscal?: boolean
   juridico?: boolean
   juridicoValor?: number
+  equipe?: string
   created_at: string
 }
 
@@ -81,6 +82,7 @@ export const CATEGORIES = [
   'Impostos',
   'Fornecedores',
   'Folha de Pagamento',
+  'Comissão',
   'Outros',
 ]
 

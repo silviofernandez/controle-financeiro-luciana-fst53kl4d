@@ -2,15 +2,7 @@ import { useState, useEffect, useRef, useMemo, FormEvent, ChangeEvent } from 're
 import { useTransactions } from '@/contexts/TransactionContext'
 import { useBrokers } from '@/contexts/BrokerContext'
 import { useCommissions } from '@/contexts/CommissionContext'
-import {
-  UNIDADES,
-  BANCOS,
-  Unidade,
-  Banco,
-  ClassificacaoDespesa,
-  ReceitaTipo,
-  Broker,
-} from '@/types'
+import { UNIDADES, BANCOS, Unidade, Banco, ClassificacaoDespesa, ReceitaTipo } from '@/types'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -19,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from './ui/checkbox'
 import { cn, formatCurrency, parseCurrency } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
+import { toast } from '@/hooks/use-toast'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,91 +38,6 @@ const BANCO_MAP: Record<string, Banco> = {
   neon: 'Neon',
 }
 
-function BrokerSelectField({
-  label,
-  value,
-  onChange,
-  brokers,
-  nivel,
-  onNivelChange,
-  pct,
-  onPctChange,
-  hideLevel = false,
-  readOnlyPct = false,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  brokers: Broker[]
-  nivel: string
-  onNivelChange: (v: string) => void
-  pct: string
-  onPctChange: (v: string) => void
-  hideLevel?: boolean
-  readOnlyPct?: boolean
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="space-y-1.5">
-        <Label>{label}</Label>
-        <Select value={value} onValueChange={onChange}>
-          <SelectTrigger className="bg-white">
-            <SelectValue placeholder="Selecione" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="nao_informado">Não informado</SelectItem>
-            {brokers.map((b) => (
-              <SelectItem key={b.id} value={b.id}>
-                {b.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      {value && value !== 'nao_informado' && (
-        <div
-          className={cn(
-            'grid gap-2 animate-in fade-in slide-in-from-top-2',
-            hideLevel ? 'grid-cols-1' : 'grid-cols-2',
-          )}
-        >
-          {!hideLevel && (
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Nível</Label>
-              <Select value={nivel} onValueChange={onNivelChange}>
-                <SelectTrigger className="bg-white h-8 text-xs">
-                  <SelectValue placeholder="Nível" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Júnior">Júnior</SelectItem>
-                  <SelectItem value="Pleno">Pleno</SelectItem>
-                  <SelectItem value="Sênior">Sênior</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Porcentagem (%)</Label>
-            <Input
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              value={pct}
-              onChange={(e) => onPctChange(e.target.value)}
-              disabled={readOnlyPct}
-              className={cn(
-                'bg-white h-8 text-xs font-mono',
-                readOnlyPct && 'bg-slate-50 text-slate-500 cursor-not-allowed',
-              )}
-            />
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 export function TransactionForm() {
   const { addTransaction, transactions } = useTransactions()
   const { brokers } = useBrokers()
@@ -146,14 +54,10 @@ export function TransactionForm() {
   const [isCheckpoint, setIsCheckpoint] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  // Commission fields
-  const [corretor, setCorretor] = useState('')
-  const [corretorNivel, setCorretorNivel] = useState('')
-  const [corretorPorcentagem, setCorretorPorcentagem] = useState('')
-
-  const [captador, setCaptador] = useState('')
-  const [captadorNivel, setCaptadorNivel] = useState('')
-  const [captadorPorcentagem, setCaptadorPorcentagem] = useState('')
+  // Commission dynamic fields
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('')
+  const [participantNames, setParticipantNames] = useState<Record<string, string>>({})
+  const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({})
 
   const [notaFiscal, setNotaFiscal] = useState(false)
   const [juridico, setJuridico] = useState(false)
@@ -164,19 +68,6 @@ export function TransactionForm() {
   const [summaryModalVisible, setSummaryModalVisible] = useState(false)
   const [summaryData, setSummaryData] = useState<SummaryData[]>([])
   const wrapperRef = useRef<HTMLDivElement>(null)
-
-  const captadorDefaultPct = useMemo(() => {
-    const captadorRule = teams
-      .flatMap((t) => t.rules)
-      .find((r) => r.role.toLowerCase() === 'captador')
-    return captadorRule?.variations[0]?.value ?? 5
-  }, [teams])
-
-  useEffect(() => {
-    if (captador && captador !== 'nao_informado') {
-      setCaptadorPorcentagem(captadorDefaultPct.toString())
-    }
-  }, [captadorDefaultPct, captador])
 
   const despesaDescriptions = useMemo(() => {
     const despesas = transactions.filter((t) => t.tipo === 'despesa')
@@ -238,28 +129,19 @@ export function TransactionForm() {
     setValorInput(formatCurrency(parseCurrency(e.target.value)))
   }
 
-  const handleCorretorChange = (val: string) => {
-    setCorretor(val)
-    if (val === 'nao_informado') {
-      setCorretorNivel('')
-      setCorretorPorcentagem('')
-    } else {
-      const b = brokers.find((x) => x.id === val)
-      if (b) {
-        setCorretorNivel(b.level)
-        setCorretorPorcentagem(b.percentage.toString())
-      }
-    }
-  }
+  const handleTeamChange = (teamId: string) => {
+    setSelectedTeamId(teamId)
+    const team = teams.find((t) => t.id === teamId)
+    if (team) {
+      setNotaFiscal(team.defaultTax)
+      setJuridico(team.defaultLegal)
 
-  const handleCaptadorChange = (val: string) => {
-    setCaptador(val)
-    if (val === 'nao_informado') {
-      setCaptadorNivel('')
-      setCaptadorPorcentagem('')
-    } else {
-      setCaptadorNivel('')
-      setCaptadorPorcentagem(captadorDefaultPct.toString())
+      const vars: Record<string, string> = {}
+      team.rules.forEach((r) => {
+        vars[r.id] = r.variations[0].id
+      })
+      setSelectedVariations(vars)
+      setParticipantNames({})
     }
   }
 
@@ -276,49 +158,145 @@ export function TransactionForm() {
       banco,
       isCheckpoint,
       classificacao: tipo === 'despesa' && !isCheckpoint ? classificacao : null,
-      ...(tipo === 'receita' && !isCheckpoint
-        ? {
-            receitaTipo,
-            corretor: corretor !== 'nao_informado' && corretor ? corretor : undefined,
-            corretorNivel: corretor !== 'nao_informado' && corretor ? corretorNivel : undefined,
-            corretorPorcentagem:
-              corretor !== 'nao_informado' && corretor ? Number(corretorPorcentagem) : undefined,
-            captador: captador !== 'nao_informado' && captador ? captador : undefined,
-            captadorNivel: captador !== 'nao_informado' && captador ? captadorNivel : undefined,
-            captadorPorcentagem:
-              captador !== 'nao_informado' && captador ? Number(captadorPorcentagem) : undefined,
-            notaFiscal: receitaTipo === 'comissao' ? notaFiscal : undefined,
-            juridico: receitaTipo === 'comissao' ? juridico : undefined,
-            juridicoValor:
-              receitaTipo === 'comissao' ? parseCurrency(juridicoValorInput) : undefined,
-          }
-        : {}),
+      receitaTipo: tipo === 'receita' && !isCheckpoint ? receitaTipo : undefined,
     })
 
     setDescricao('')
     setValorInput('')
     setReceitaTipo('outro')
-    setCorretor('')
-    setCorretorNivel('')
-    setCorretorPorcentagem('')
-    setCaptador('')
-    setCaptadorNivel('')
-    setCaptadorPorcentagem('')
+    setSelectedTeamId('')
+    setParticipantNames({})
+    setSelectedVariations({})
     setNotaFiscal(false)
     setJuridico(false)
     setJuridicoValorInput(formatCurrency(200))
 
     setLoading(false)
     setConfirmDialogVisible(false)
+    toast({ title: 'Sucesso', description: 'Lançamento adicionado com sucesso!' })
   }
 
   const handleConfirmCommission = async () => {
-    await executeSubmit()
+    setLoading(true)
+    await new Promise((r) => setTimeout(r, 400))
+    const team = teams.find((t) => t.id === selectedTeamId)
+    if (!team) {
+      setLoading(false)
+      return
+    }
+
+    const launchDate = new Date(data).toISOString()
+    const gross = parseCurrency(valorInput)
+
+    summaryData.forEach((item) => {
+      if (item.id === 'imobiliaria') return
+
+      let desc = ''
+      if (item.id === 'impostos') desc = 'Despesa Comissão Imposto'
+      else if (item.id === 'juridico') desc = 'Despesa Comissão Jurídico'
+      else {
+        desc = `Despesa Comissão ${item.role}${item.name && item.name !== 'nao_informado' ? ` ${item.name}` : ''}`
+      }
+
+      addTransaction({
+        tipo: 'despesa',
+        descricao: desc.trim(),
+        valor: item.value,
+        data: launchDate,
+        categoria: 'Comissão',
+        unidade,
+        banco,
+        classificacao: 'variavel',
+        equipe: team.name,
+      })
+    })
+
+    addTransaction({
+      tipo: 'receita',
+      descricao: `Receita Comissão ${team.name}`,
+      valor: gross,
+      data: launchDate,
+      categoria: 'Comissão',
+      unidade,
+      banco,
+      receitaTipo: 'comissao',
+      equipe: team.name,
+    })
+
+    setValorInput('')
+    setReceitaTipo('outro')
+    setSelectedTeamId('')
+    setParticipantNames({})
+    setSelectedVariations({})
+    setNotaFiscal(false)
+    setJuridico(false)
+    setJuridicoValorInput(formatCurrency(200))
+
+    setLoading(false)
     setSummaryModalVisible(false)
+    toast({ title: 'Sucesso', description: 'Comissão lançada com sucesso!' })
   }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
+
+    if (tipo === 'receita' && !isCheckpoint && receitaTipo === 'comissao') {
+      if (!valorInput) return
+      if (!selectedTeamId) {
+        toast({ title: 'Atenção', description: 'Selecione uma equipe.', variant: 'destructive' })
+        return
+      }
+
+      const team = teams.find((t) => t.id === selectedTeamId)
+      if (!team) return
+
+      const gross = parseCurrency(valorInput)
+      const taxAmount = notaFiscal ? gross * 0.15 : 0
+      const legalAmount = juridico ? parseCurrency(juridicoValorInput) : 0
+      const netBase = Math.max(0, gross - taxAmount - legalAmount)
+
+      const data: SummaryData[] = []
+
+      team.rules.forEach((rule) => {
+        const varId = selectedVariations[rule.id]
+        const variation = rule.variations.find((v) => v.id === varId) || rule.variations[0]
+        const name = participantNames[rule.id]
+
+        let val = 0
+        if (variation.type === 'percentage') {
+          val = netBase * (variation.value / 100)
+        } else {
+          val = variation.value
+        }
+
+        if (val > 0) {
+          data.push({
+            id: rule.id,
+            role: rule.role,
+            name: name && name !== 'nao_informado' ? name : undefined,
+            value: val,
+          })
+        }
+      })
+
+      if (taxAmount > 0) {
+        data.push({ id: 'impostos', role: 'Impostos', value: taxAmount })
+      }
+      if (legalAmount > 0) {
+        data.push({ id: 'juridico', role: 'Jurídico', value: legalAmount })
+      }
+
+      const totalDistributed = data.reduce((acc, curr) => acc + curr.value, 0)
+      const rest = gross - totalDistributed
+      if (rest > 0) {
+        data.push({ id: 'imobiliaria', role: 'Imobiliária', value: rest })
+      }
+
+      setSummaryData(data)
+      setSummaryModalVisible(true)
+      return
+    }
+
     if (!descricao || !valorInput) return
 
     if (tipo === 'despesa' && !isCheckpoint) {
@@ -330,34 +308,10 @@ export function TransactionForm() {
       }
     }
 
-    if (tipo === 'receita' && !isCheckpoint && receitaTipo === 'comissao') {
-      const gross = parseCurrency(valorInput)
-      const taxAmount = notaFiscal ? gross * 0.15 : 0
-      const legalAmount = juridico ? parseCurrency(juridicoValorInput) : 0
-      const net = Math.max(0, gross - taxAmount - legalAmount)
-
-      const corretorPct = Number(corretorPorcentagem) || 0
-      const captadorPct = Number(captadorPorcentagem) || 0
-
-      const corretorVal = net * (corretorPct / 100)
-      const captadorVal = net * (captadorPct / 100)
-      const rest = net - corretorVal - captadorVal
-
-      const data: SummaryData[] = [
-        { id: 'corretor', role: 'Corretor', value: corretorVal },
-        { id: 'captador', role: 'Captador', value: captadorVal },
-        { id: 'imobiliaria', role: 'Imobiliária', value: rest },
-        { id: 'impostos', role: 'Impostos', value: taxAmount },
-        { id: 'juridico', role: 'Jurídico', value: legalAmount },
-      ].filter((x) => x.value > 0)
-
-      setSummaryData(data)
-      setSummaryModalVisible(true)
-      return
-    }
-
     executeSubmit()
   }
+
+  const isCommission = tipo === 'receita' && !isCheckpoint && receitaTipo === 'comissao'
 
   return (
     <>
@@ -422,34 +376,82 @@ export function TransactionForm() {
               </div>
             )}
 
-            {tipo === 'receita' && !isCheckpoint && receitaTipo === 'comissao' && (
+            {isCommission && (
               <div className="space-y-4 p-4 bg-emerald-50/50 rounded-lg border border-emerald-100 animate-in fade-in zoom-in-95 duration-200">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <BrokerSelectField
-                    label="Corretor"
-                    value={corretor}
-                    onChange={handleCorretorChange}
-                    brokers={brokers}
-                    nivel={corretorNivel}
-                    onNivelChange={setCorretorNivel}
-                    pct={corretorPorcentagem}
-                    onPctChange={setCorretorPorcentagem}
-                  />
-                  <BrokerSelectField
-                    label="Captador"
-                    value={captador}
-                    onChange={handleCaptadorChange}
-                    brokers={brokers}
-                    nivel={captadorNivel}
-                    onNivelChange={setCaptadorNivel}
-                    pct={captadorPorcentagem}
-                    onPctChange={setCaptadorPorcentagem}
-                    hideLevel={true}
-                    readOnlyPct={true}
-                  />
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Equipe / Modelo de Repasse</Label>
+                  <Select value={selectedTeamId} onValueChange={handleTeamChange}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Selecione a equipe" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teams.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between">
+                {selectedTeamId &&
+                  teams
+                    .find((t) => t.id === selectedTeamId)
+                    ?.rules.map((rule) => (
+                      <div
+                        key={rule.id}
+                        className="grid grid-cols-2 gap-3 pt-2 border-t border-emerald-100/50"
+                      >
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-semibold text-emerald-800">
+                            {rule.role}
+                          </Label>
+                          <Select
+                            value={participantNames[rule.id] || 'nao_informado'}
+                            onValueChange={(v) =>
+                              setParticipantNames((p) => ({ ...p, [rule.id]: v }))
+                            }
+                          >
+                            <SelectTrigger className="bg-white h-8 text-xs">
+                              <SelectValue placeholder="Profissional" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="nao_informado">Não informado</SelectItem>
+                              {brokers.map((b) => (
+                                <SelectItem key={b.id} value={b.name}>
+                                  {b.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] text-muted-foreground">
+                            Variação da Regra
+                          </Label>
+                          <Select
+                            value={selectedVariations[rule.id]}
+                            onValueChange={(v) =>
+                              setSelectedVariations((p) => ({ ...p, [rule.id]: v }))
+                            }
+                          >
+                            <SelectTrigger className="bg-white h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {rule.variations.map((v) => (
+                                <SelectItem key={v.id} value={v.id}>
+                                  {v.name} ({v.value}
+                                  {v.type === 'percentage' ? '%' : ' R$'})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    ))}
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between pt-4 border-t border-emerald-100/50">
                   <div className="flex space-x-6">
                     <div className="flex items-center space-x-2">
                       <Checkbox
@@ -457,8 +459,11 @@ export function TransactionForm() {
                         checked={notaFiscal}
                         onCheckedChange={(c) => setNotaFiscal(c === true)}
                       />
-                      <Label htmlFor="notaFiscal" className="text-sm font-normal cursor-pointer">
-                        Nota Fiscal
+                      <Label
+                        htmlFor="notaFiscal"
+                        className="text-[11px] font-normal cursor-pointer"
+                      >
+                        Nota Fiscal (15%)
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -467,57 +472,61 @@ export function TransactionForm() {
                         checked={juridico}
                         onCheckedChange={(c) => setJuridico(c === true)}
                       />
-                      <Label htmlFor="juridico" className="text-sm font-normal cursor-pointer">
+                      <Label htmlFor="juridico" className="text-[11px] font-normal cursor-pointer">
                         Jurídico
                       </Label>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 w-full sm:w-1/2">
-                    <Label className="text-sm shrink-0">Valor Jurídico</Label>
-                    <Input
-                      value={juridicoValorInput}
-                      onChange={(e) =>
-                        setJuridicoValorInput(formatCurrency(parseCurrency(e.target.value)))
-                      }
-                      className="bg-white font-mono h-9"
-                    />
-                  </div>
+                  {juridico && (
+                    <div className="flex items-center space-x-2 w-full sm:w-[130px]">
+                      <Label className="text-[11px] shrink-0">Valor</Label>
+                      <Input
+                        value={juridicoValorInput}
+                        onChange={(e) =>
+                          setJuridicoValorInput(formatCurrency(parseCurrency(e.target.value)))
+                        }
+                        className="bg-white font-mono h-8 text-xs"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            <div className="space-y-1.5 relative" ref={wrapperRef}>
-              <Label>Histórico / Descrição</Label>
-              <Input
-                required
-                value={descricao}
-                onChange={(e) => {
-                  setDescricao(e.target.value)
-                  setShowSuggestions(true)
-                }}
-                onFocus={() => setShowSuggestions(true)}
-                placeholder="Ex: Pagamento Fornecedor Santander"
-                className="bg-white"
-                autoComplete="off"
-              />
-              {tipo === 'despesa' && showSuggestions && suggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-md border bg-popover py-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
-                  {suggestions.map((s, i) => (
-                    <div
-                      key={i}
-                      className="cursor-pointer px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
-                      onClick={() => {
-                        setDescricao(s)
-                        setShowSuggestions(false)
-                      }}
-                    >
-                      {s}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {!isCommission && (
+              <div className="space-y-1.5 relative" ref={wrapperRef}>
+                <Label>Histórico / Descrição</Label>
+                <Input
+                  required
+                  value={descricao}
+                  onChange={(e) => {
+                    setDescricao(e.target.value)
+                    setShowSuggestions(true)
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  placeholder="Ex: Pagamento Fornecedor Santander"
+                  className="bg-white"
+                  autoComplete="off"
+                />
+                {tipo === 'despesa' && showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-md border bg-popover py-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
+                    {suggestions.map((s, i) => (
+                      <div
+                        key={i}
+                        className="cursor-pointer px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => {
+                          setDescricao(s)
+                          setShowSuggestions(false)
+                        }}
+                      >
+                        {s}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

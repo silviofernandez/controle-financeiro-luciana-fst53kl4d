@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast'
 import { Save } from 'lucide-react'
 import { CommissionSettings } from '@/components/CommissionSettings'
 import { BrokerSettings } from '@/components/BrokerSettings'
+import { TeamCommissionManager } from '@/components/TeamCommissionManager'
 
 export default function Settings() {
   const handleSave = (e: React.FormEvent) => {
@@ -15,7 +16,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in-up">
+    <div className="max-w-5xl mx-auto space-y-6 animate-fade-in-up">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-primary">Configurações</h2>
         <p className="text-muted-foreground mt-1">
@@ -24,14 +25,17 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="geral" className="w-full">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 max-w-2xl mb-6 h-auto sm:h-10">
-          <TabsTrigger value="geral" className="py-2 sm:py-1.5">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4 max-w-4xl mb-6 h-auto sm:h-10">
+          <TabsTrigger value="geral" className="py-2 sm:py-1.5 text-xs sm:text-sm">
             Geral & Integrações
           </TabsTrigger>
-          <TabsTrigger value="comissoes" className="py-2 sm:py-1.5">
+          <TabsTrigger value="equipes" className="py-2 sm:py-1.5 text-xs sm:text-sm">
+            Gerenciar Equipes de Comissão
+          </TabsTrigger>
+          <TabsTrigger value="comissoes" className="py-2 sm:py-1.5 text-xs sm:text-sm">
             Regras de Comissão
           </TabsTrigger>
-          <TabsTrigger value="corretores" className="py-2 sm:py-1.5">
+          <TabsTrigger value="corretores" className="py-2 sm:py-1.5 text-xs sm:text-sm">
             Configuração de Corretores
           </TabsTrigger>
         </TabsList>
@@ -101,6 +105,10 @@ export default function Settings() {
               </Button>
             </div>
           </form>
+        </TabsContent>
+
+        <TabsContent value="equipes">
+          <TeamCommissionManager />
         </TabsContent>
 
         <TabsContent value="comissoes">

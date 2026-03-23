@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from '@/hooks/use-toast'
 import { Save } from 'lucide-react'
 import { CommissionSettings } from '@/components/CommissionSettings'
+import { BrokerSettings } from '@/components/BrokerSettings'
 
 export default function Settings() {
   const handleSave = (e: React.FormEvent) => {
@@ -23,9 +24,16 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="geral" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md mb-6">
-          <TabsTrigger value="geral">Geral & Integrações</TabsTrigger>
-          <TabsTrigger value="comissoes">Regras de Comissão</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 max-w-2xl mb-6 h-auto sm:h-10">
+          <TabsTrigger value="geral" className="py-2 sm:py-1.5">
+            Geral & Integrações
+          </TabsTrigger>
+          <TabsTrigger value="comissoes" className="py-2 sm:py-1.5">
+            Regras de Comissão
+          </TabsTrigger>
+          <TabsTrigger value="corretores" className="py-2 sm:py-1.5">
+            Configuração de Corretores
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="geral">
@@ -97,6 +105,10 @@ export default function Settings() {
 
         <TabsContent value="comissoes">
           <CommissionSettings />
+        </TabsContent>
+
+        <TabsContent value="corretores">
+          <BrokerSettings />
         </TabsContent>
       </Tabs>
     </div>

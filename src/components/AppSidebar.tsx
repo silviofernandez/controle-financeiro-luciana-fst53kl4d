@@ -7,6 +7,7 @@ import {
   Calculator,
   Activity,
   Receipt,
+  TrendingUp,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -21,6 +22,7 @@ import {
 const items = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Inserir Dados', url: '/#inserir', icon: PlusCircle },
+  { title: 'Resultado da Empresa', url: '/resultado-empresa', icon: TrendingUp },
   { title: 'Calculadora de Comissão', url: '/comissoes', icon: Calculator },
   { title: 'Margem de Contribuição', url: '/margem-contribuicao', icon: Activity },
   { title: 'Custos Operacionais', url: '/custos-operacionais', icon: Receipt },

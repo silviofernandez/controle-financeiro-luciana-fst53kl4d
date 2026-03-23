@@ -8,6 +8,7 @@ import Settings from './pages/Settings'
 import Commissions from './pages/Commissions'
 import ContributionMargin from './pages/ContributionMargin'
 import OperatingCosts from './pages/OperatingCosts'
+import CompanyResult from './pages/CompanyResult'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import { TransactionProvider } from './contexts/TransactionContext'
@@ -25,6 +26,7 @@ const App = () => (
             <Routes>
               <Route element={<Layout />}>
                 <Route path="/" element={<Index />} />
+                <Route path="/resultado-empresa" element={<CompanyResult />} />
                 <Route path="/relatorios" element={<Reports />} />
                 <Route path="/margem-contribuicao" element={<ContributionMargin />} />
                 <Route path="/custos-operacionais" element={<OperatingCosts />} />

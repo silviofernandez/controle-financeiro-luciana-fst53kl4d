@@ -67,21 +67,23 @@ export function TransactionForm() {
   const [confirmDialogVisible, setConfirmDialogVisible] = useState(false)
   const [summaryModalVisible, setSummaryModalVisible] = useState(false)
   const [summaryData, setSummaryData] = useState<SummaryData[]>([])
-  const wrapperRef = useRef<HTMLDivElement>(null)
 
-  const despesaDescriptions = useMemo(() => {
-    const despesas = transactions.filter((t) => t.tipo === 'despesa')
-    const descriptions = despesas.map((t) => t.descricao.trim())
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const historicDescriptions = useMemo(() => {
+    const relevantTransactions = transactions.filter((t) => t.tipo === tipo && !t.isCheckpoint)
+    const descriptions = relevantTransactions.map((t) => t.descricao.trim()).filter(Boolean)
     return Array.from(new Set(descriptions))
-  }, [transactions])
+  }, [transactions, tipo])
 
   const suggestions = useMemo(() => {
-    if (tipo !== 'despesa' || !descricao) return []
+    if (!descricao) return historicDescriptions.slice(0, 10)
     const lowerInput = descricao.toLowerCase()
-    return despesaDescriptions
+    return historicDescriptions
       .filter((d) => d.toLowerCase().includes(lowerInput) && d.toLowerCase() !== lowerInput)
       .slice(0, 10)
-  }, [descricao, despesaDescriptions, tipo])
+  }, [descricao, historicDescriptions])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -255,7 +257,7 @@ export function TransactionForm() {
       const legalAmount = juridico ? parseCurrency(juridicoValorInput) : 0
       const netBase = Math.max(0, gross - taxAmount - legalAmount)
 
-      const data: SummaryData[] = []
+      const d: SummaryData[] = []
 
       team.rules.forEach((rule) => {
         const varId = selectedVariations[rule.id]
@@ -270,7 +272,7 @@ export function TransactionForm() {
         }
 
         if (val > 0) {
-          data.push({
+          d.push({
             id: rule.id,
             role: rule.role,
             name: name && name !== 'nao_informado' ? name : undefined,
@@ -280,29 +282,29 @@ export function TransactionForm() {
       })
 
       if (taxAmount > 0) {
-        data.push({ id: 'impostos', role: 'Impostos', value: taxAmount })
+        d.push({ id: 'impostos', role: 'Impostos', value: taxAmount })
       }
       if (legalAmount > 0) {
-        data.push({ id: 'juridico', role: 'Jurídico', value: legalAmount })
+        d.push({ id: 'juridico', role: 'Jurídico', value: legalAmount })
       }
 
-      const totalDistributed = data.reduce((acc, curr) => acc + curr.value, 0)
+      const totalDistributed = d.reduce((acc, curr) => acc + curr.value, 0)
       const rest = gross - totalDistributed
       if (rest > 0) {
-        data.push({ id: 'imobiliaria', role: 'Imobiliária', value: rest })
+        d.push({ id: 'imobiliaria', role: 'Imobiliária', value: rest })
       }
 
-      setSummaryData(data)
+      setSummaryData(d)
       setSummaryModalVisible(true)
       return
     }
 
     if (!descricao || !valorInput) return
 
-    if (tipo === 'despesa' && !isCheckpoint) {
+    if (!isCheckpoint) {
       const lowerDesc = descricao.trim().toLowerCase()
-      const exists = despesaDescriptions.some((d) => d.toLowerCase() === lowerDesc)
-      if (!exists && despesaDescriptions.length > 0) {
+      const exists = historicDescriptions.some((d) => d.toLowerCase() === lowerDesc)
+      if (!exists && historicDescriptions.length > 0) {
         setConfirmDialogVisible(true)
         return
       }
@@ -499,6 +501,7 @@ export function TransactionForm() {
                 <Label>Histórico / Descrição</Label>
                 <Input
                   required
+                  ref={inputRef}
                   value={descricao}
                   onChange={(e) => {
                     setDescricao(e.target.value)
@@ -509,13 +512,14 @@ export function TransactionForm() {
                   className="bg-white"
                   autoComplete="off"
                 />
-                {tipo === 'despesa' && showSuggestions && suggestions.length > 0 && (
+                {showSuggestions && suggestions.length > 0 && (
                   <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-md border bg-popover py-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
                     {suggestions.map((s, i) => (
                       <div
                         key={i}
                         className="cursor-pointer px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
-                        onClick={() => {
+                        onMouseDown={(e) => {
+                          e.preventDefault()
                           setDescricao(s)
                           setShowSuggestions(false)
                         }}
@@ -605,16 +609,24 @@ export function TransactionForm() {
       <AlertDialog open={confirmDialogVisible} onOpenChange={setConfirmDialogVisible}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Padrão não encontrado</AlertDialogTitle>
+            <AlertDialogTitle>Nova Descrição</AlertDialogTitle>
             <AlertDialogDescription>
-              A descrição <strong>"{descricao}"</strong> não foi encontrada no histórico de
-              despesas. Deseja criar um novo padrão ou revisar a descrição inserida para evitar
-              duplicidades?
+              Deseja lançar uma nova descrição que ainda não existe?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Revisar</AlertDialogCancel>
-            <AlertDialogAction onClick={executeSubmit}>Criar Novo Padrão</AlertDialogAction>
+            <AlertDialogCancel
+              onClick={() => {
+                setConfirmDialogVisible(false)
+                setTimeout(() => {
+                  inputRef.current?.focus()
+                  setShowSuggestions(true)
+                }, 50)
+              }}
+            >
+              Não, escolher existente
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={executeSubmit}>Sim, criar nova</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

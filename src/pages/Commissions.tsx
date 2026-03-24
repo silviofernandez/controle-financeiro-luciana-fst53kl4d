@@ -5,7 +5,12 @@ import { useBrokers } from '@/contexts/BrokerContext'
 import { CommissionSummary } from '@/components/CommissionSummary'
 import { CommissionSummaryModal, SummaryData } from '@/components/CommissionSummaryModal'
 import { UnregisteredBrokersModal, MissingNameInfo } from '@/components/UnregisteredBrokersModal'
-import { saveCommission, CommissionPayload, CommissionLinePayload } from '@/services/supabase'
+import {
+  saveCommission,
+  verifyRecordId,
+  CommissionPayload,
+  CommissionLinePayload,
+} from '@/services/supabase'
 import { toast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,7 +25,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
-import { Broker, Transaction } from '@/types'
+import { Broker } from '@/types'
 
 const isValidUUID = (uuid: any) =>
   typeof uuid === 'string' &&
@@ -92,10 +97,10 @@ export default function Commissions() {
     })
 
     if (taxAmount > 0) {
-      data.push({ id: 'impostos', role: 'Impostos', value: taxAmount })
+      data.push({ id: 'impostos', role: 'Impostos', name: 'Imposto Nota Fiscal', value: taxAmount })
     }
     if (legalAmount > 0) {
-      data.push({ id: 'juridico', role: 'Jurídico', value: legalAmount })
+      data.push({ id: 'juridico', role: 'Jurídico', name: 'Despesa Jurídica', value: legalAmount })
     }
 
     return data
@@ -105,17 +110,18 @@ export default function Commissions() {
     if (!team) return
 
     const enteredNames = Object.values(participantNames)
-      .flatMap((n) => (typeof n === 'string' ? n?.split?.(',') || [] : []))
-      .map((n) => (typeof n === 'string' ? n?.trim?.() || '' : ''))
-      .filter((n) => n && n.length > 0)
+      .filter((n): n is string => typeof n === 'string')
+      .flatMap((n) => n.split(','))
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0)
 
     const existingNamesLower = brokers
-      .map((b) => b?.name)
-      .filter((name) => typeof name === 'string' && name?.trim?.().length > 0)
-      .map((name) => (name as string)?.toLowerCase?.() || '')
+      .filter((b) => b && typeof b.name === 'string')
+      .map((b) => b.name.trim().toLowerCase())
+      .filter((n) => n.length > 0)
 
     const missing = enteredNames.filter(
-      (name) => name && !existingNamesLower.includes(name?.toLowerCase?.() || ''),
+      (name) => name && !existingNamesLower.includes(name.toLowerCase()),
     )
 
     const uniqueMissing = Array.from(new Set(missing))
@@ -134,13 +140,12 @@ export default function Commissions() {
       Object.keys(updated).forEach((ruleId) => {
         const currentVal = updated[ruleId]
         if (typeof currentVal === 'string') {
-          let parts = currentVal?.split?.(',') || []
-          parts = parts.map((part) => {
-            const cleanPart = part?.trim?.() || ''
+          const parts = currentVal.split(',').map((part) => {
+            const cleanPart = part.trim()
             const match = resolvedNames.find(
-              (r) => (r?.original as string)?.toLowerCase?.() === cleanPart?.toLowerCase?.(),
+              (r) => r?.original?.toLowerCase() === cleanPart.toLowerCase(),
             )
-            return match && typeof match.edited === 'string' ? match.edited : cleanPart
+            return match?.edited ? match.edited : cleanPart
           })
           updated[ruleId] = parts.join(', ')
         }
@@ -149,10 +154,10 @@ export default function Commissions() {
     })
 
     const newBrokers: Broker[] = resolvedNames
-      .filter((r) => r && typeof r.edited === 'string' && r.edited?.trim?.() !== '')
+      .filter((r) => r && typeof r.edited === 'string' && r.edited.trim() !== '')
       .map((r) => ({
         id: crypto.randomUUID(),
-        name: r.edited?.trim?.() || 'Participante',
+        name: r.edited.trim(),
         level: 'Pleno',
         percentage: 0,
       }))
@@ -185,12 +190,31 @@ export default function Commissions() {
         ? brokers.find((b) => b?.name?.toLowerCase() === capturerData.name?.toLowerCase())
         : null
 
+      let finalBrokerId: string | null = null
+      let finalCapturerId: string | null = null
+      let finalTeamId: string | null = null
+
+      if (brokerRecord?.id && isValidUUID(brokerRecord.id)) {
+        const isValid = await verifyRecordId('colaboradores', brokerRecord.id)
+        if (isValid) finalBrokerId = brokerRecord.id
+      }
+
+      if (capturerRecord?.id && isValidUUID(capturerRecord.id)) {
+        const isValid = await verifyRecordId('colaboradores', capturerRecord.id)
+        if (isValid) finalCapturerId = capturerRecord.id
+      }
+
+      if (team.id && isValidUUID(team.id)) {
+        const isValid = await verifyRecordId('equipes', team.id)
+        if (isValid) finalTeamId = team.id
+      }
+
       const commissionData: CommissionPayload = {
         description: `Comissão ${typeof team?.name === 'string' ? team.name : 'Desconhecida'}`,
         total_value: grossValue,
-        team_id: isValidUUID(team.id) ? team.id : null,
-        broker_id: isValidUUID(brokerRecord?.id) ? brokerRecord?.id || null : null,
-        capturer_id: isValidUUID(capturerRecord?.id) ? capturerRecord?.id || null : null,
+        team_id: finalTeamId,
+        broker_id: finalBrokerId,
+        capturer_id: finalCapturerId,
         has_invoice: useTax,
         has_legal: useLegal,
         legal_value: useLegal ? 200 : 0,
@@ -263,14 +287,23 @@ export default function Commissions() {
       })
 
       toast({ title: 'Sucesso', description: 'Comissão salva e sincronizada com sucesso!' })
+
       setModalOpen(false)
       setGrossValueRaw('0')
       setParticipantNames({})
-    } catch (e) {
+
+      const initialVars: Record<string, string> = {}
+      team.rules.forEach((r) => {
+        initialVars[r.id] = r.variations[0]?.id
+      })
+      setSelectedVariations(initialVars)
+      setUseTax(team.defaultTax)
+      setUseLegal(team.defaultLegal)
+    } catch (e: any) {
       console.error(e)
       toast({
-        title: 'Erro',
-        description: 'Falha ao processar a comissão. Verifique os dados e tente novamente.',
+        title: 'Falha ao processar a comissão',
+        description: e.message || 'Verifique a conexão ou os dados preenchidos e tente novamente.',
         variant: 'destructive',
       })
     } finally {

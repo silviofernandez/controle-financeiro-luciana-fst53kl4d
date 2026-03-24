@@ -23,6 +23,24 @@ export interface CommissionLinePayload {
   created_at: string
 }
 
+export const verifyRecordId = async (table: string, id: string): Promise<boolean> => {
+  if (!SUPABASE_URL || !SUPABASE_KEY || !id) return false
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}&select=id`, {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+      },
+    })
+    if (!res.ok) return false
+    const data = await res.json()
+    return Array.isArray(data) && data.length > 0
+  } catch (error) {
+    return false
+  }
+}
+
 export const saveCommission = async (
   commission: CommissionPayload,
   lines: CommissionLinePayload[],
@@ -46,9 +64,15 @@ export const saveCommission = async (
     })
 
     if (!commRes.ok) {
-      const err = await commRes.text()
-      console.error('Failed to save commission:', err)
-      throw new Error(`Failed to save commission: ${err}`)
+      let errStr = await commRes.text()
+      try {
+        const errObj = JSON.parse(errStr)
+        errStr = errObj.message || errObj.details || errStr
+      } catch (e) {
+        // Ignorar falha no parse
+      }
+      console.error('Failed to save commission:', errStr)
+      throw new Error(`Erro ao salvar na base: ${errStr}`)
     }
 
     const commData = await commRes.json()
@@ -67,9 +91,15 @@ export const saveCommission = async (
       })
 
       if (!linesRes.ok) {
-        const err = await linesRes.text()
-        console.error('Failed to save commission lines:', err)
-        throw new Error(`Failed to save commission lines: ${err}`)
+        let errStr = await linesRes.text()
+        try {
+          const errObj = JSON.parse(errStr)
+          errStr = errObj.message || errObj.details || errStr
+        } catch (e) {
+          // Ignorar falha no parse
+        }
+        console.error('Failed to save commission lines:', errStr)
+        throw new Error(`Erro ao salvar itens da comissão: ${errStr}`)
       }
     }
 

@@ -4,15 +4,23 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from '@/hooks/use-toast'
-import { Save } from 'lucide-react'
+import { Save, LogOut } from 'lucide-react'
 import { CommissionSettings } from '@/components/CommissionSettings'
 import { BrokerSettings } from '@/components/BrokerSettings'
 import { TeamCommissionManager } from '@/components/TeamCommissionManager'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Settings() {
+  const { user, signOut } = useAuth()
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
     toast({ title: 'Sucesso!', description: 'Configurações salvas e aplicadas com sucesso.' })
+  }
+
+  const handleSignOut = () => {
+    signOut()
+    toast({ title: 'Desconectado', description: 'Você saiu da sua conta.' })
   }
 
   return (
@@ -45,24 +53,36 @@ export default function Settings() {
             <Card className="shadow-md border-blue-100/50">
               <CardHeader className="bg-gradient-to-r from-white to-blue-50/30 pb-4">
                 <CardTitle>Perfil</CardTitle>
-                <CardDescription>Informações da conta de usuário.</CardDescription>
+                <CardDescription>Informações da conta de usuário e sessão.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-5 pt-6">
                 <div className="space-y-2">
                   <Label>Nome de Exibição</Label>
-                  <Input defaultValue="Luciana" className="max-w-md bg-white" />
+                  <Input defaultValue="Admin" className="max-w-md bg-white" />
                 </div>
                 <div className="space-y-2">
                   <Label>Email Principal</Label>
                   <Input
                     type="email"
-                    defaultValue="luciana@example.com"
+                    value={user?.email || ''}
                     disabled
-                    className="max-w-md"
+                    className="max-w-md bg-slate-50"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    O e-mail não pode ser alterado por aqui.
+                    O e-mail vinculado à sua conta Supabase Auth.
                   </p>
+                </div>
+
+                <div className="pt-4 border-t border-border/60">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleSignOut}
+                    className="gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sair da Conta
+                  </Button>
                 </div>
               </CardContent>
             </Card>

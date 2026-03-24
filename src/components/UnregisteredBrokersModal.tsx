@@ -4,7 +4,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -51,14 +50,14 @@ export function UnregisteredBrokersModal({
 
   const handleConfirm = () => {
     const validNames = names.filter((n) => {
-      return n && typeof n.edited === 'string' && n.edited.trim() !== ''
+      return n && typeof n.edited === 'string' && n?.edited?.trim?.() !== ''
     })
     onConfirm(validNames)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
           <DialogTitle>Participantes Não Cadastrados</DialogTitle>
           <DialogDescription>
@@ -67,7 +66,20 @@ export function UnregisteredBrokersModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+        <div className="flex flex-col-reverse sm:flex-row gap-2 py-2 border-b">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto"
+          >
+            Cancelar
+          </Button>
+          <Button onClick={handleConfirm} className="w-full sm:w-auto">
+            Cadastrar Agora
+          </Button>
+        </div>
+
+        <div className="grid gap-4 py-4 max-h-[50vh] overflow-y-auto pr-2">
           {names.map((item, index) => (
             <div key={index} className="space-y-2">
               <Label className="text-xs text-muted-foreground uppercase tracking-wider">
@@ -81,13 +93,6 @@ export function UnregisteredBrokersModal({
             </div>
           ))}
         </div>
-
-        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={handleConfirm}>Cadastrar Agora</Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

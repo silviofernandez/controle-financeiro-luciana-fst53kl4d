@@ -93,20 +93,19 @@ export default function Commissions() {
   const handleReviewAndLaunch = () => {
     if (!team) return
 
-    // Safely extract names with defensive checks to prevent runtime errors (e.g., undefined object string methods).
+    // Safely extract names with defensive optional chaining to prevent runtime errors
     const enteredNames = Object.values(participantNames)
-      .filter((n): n is string => typeof n === 'string' && n.trim().length > 0)
-      .flatMap((n) => n.split(','))
-      .map((n) => n.trim())
-      .filter((n) => n.length > 0)
+      .flatMap((n) => (typeof n === 'string' ? n?.split?.(',') || [] : []))
+      .map((n) => (typeof n === 'string' ? n?.trim?.() || '' : ''))
+      .filter((n) => n && n.length > 0)
 
     const existingNamesLower = brokers
       .map((b) => b?.name)
-      .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
-      .map((name) => name.toLowerCase())
+      .filter((name) => typeof name === 'string' && name?.trim?.().length > 0)
+      .map((name) => (name as string)?.toLowerCase?.() || '')
 
     const missing = enteredNames.filter(
-      (name) => typeof name === 'string' && !existingNamesLower.includes(name.toLowerCase()),
+      (name) => name && !existingNamesLower.includes(name?.toLowerCase?.() || ''),
     )
 
     const uniqueMissing = Array.from(new Set(missing))
@@ -124,26 +123,29 @@ export default function Commissions() {
       const updated = { ...prev }
       Object.keys(updated).forEach((ruleId) => {
         const currentVal = updated[ruleId]
-        const currentStr = typeof currentVal === 'string' ? currentVal.trim() : ''
-
-        const match = resolvedNames.find((r) => {
-          const origStr = typeof r?.original === 'string' ? r.original : ''
-          return origStr.toLowerCase() === currentStr.toLowerCase()
-        })
-
-        if (match && typeof match.edited === 'string') {
-          updated[ruleId] = match.edited
+        if (typeof currentVal === 'string') {
+          let parts = currentVal?.split?.(',') || []
+          parts = parts.map((part) => {
+            const cleanPart = part?.trim?.() || ''
+            const match = resolvedNames.find(
+              (r) => (r?.original as string)?.toLowerCase?.() === cleanPart?.toLowerCase?.(),
+            )
+            return match && typeof match.edited === 'string' ? match.edited : cleanPart
+          })
+          updated[ruleId] = parts.join(', ')
         }
       })
       return updated
     })
 
-    const newBrokers: Broker[] = resolvedNames.map((r) => ({
-      id: crypto.randomUUID(),
-      name: typeof r.edited === 'string' && r.edited.trim() !== '' ? r.edited : 'Participante',
-      level: 'Padrão',
-      percentage: 0,
-    }))
+    const newBrokers: Broker[] = resolvedNames
+      .filter((r) => r && typeof r.edited === 'string' && r.edited?.trim?.() !== '')
+      .map((r) => ({
+        id: crypto.randomUUID(),
+        name: r.edited?.trim?.() || 'Participante',
+        level: 'Pleno',
+        percentage: 0,
+      }))
 
     addBrokers(newBrokers)
 

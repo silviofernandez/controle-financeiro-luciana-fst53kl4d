@@ -18,8 +18,16 @@ export type Banco =
 
 export type BrokerLevel = 'Júnior' | 'Pleno' | 'Sênior' | string
 
+export type CollaboratorRole =
+  | 'Corretor'
+  | 'Gerente de Equipe'
+  | 'Gerente Geral'
+  | 'Apoio'
+  | 'Captador'
+
 export interface Broker {
   id: string
+  role?: CollaboratorRole | string
   name: string
   level: BrokerLevel
   percentage: number

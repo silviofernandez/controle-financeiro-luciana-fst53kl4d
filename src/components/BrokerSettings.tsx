@@ -1,7 +1,6 @@
-import { useState, FormEvent } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -10,187 +9,209 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Edit2, Trash2, Plus, Save, X } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { useBrokers } from '@/contexts/BrokerContext'
-import { Broker, BrokerLevel } from '@/types'
+import { Broker } from '@/types'
 
 export function BrokerSettings() {
   const { brokers, addBroker, updateBroker, deleteBroker } = useBrokers()
-  const [editingId, setEditingId] = useState<string | null>(null)
 
-  const [name, setName] = useState('')
-  const [level, setLevel] = useState<string>('')
-  const [percentage, setPercentage] = useState<string>('')
-
-  const resetForm = () => {
-    setName('')
-    setLevel('')
-    setPercentage('')
-    setEditingId(null)
-  }
-
-  const handleEdit = (broker: Broker) => {
-    setEditingId(broker.id)
-    setName(broker.name)
-    setLevel(broker.level)
-    setPercentage(broker.percentage.toString())
+  const handleAdd = () => {
+    addBroker({
+      id: crypto.randomUUID(),
+      role: 'Corretor',
+      name: '',
+      level: 'Júnior',
+      percentage: 0,
+    })
+    toast({ title: 'Adicionado', description: 'Novo colaborador adicionado à lista.' })
   }
 
   const handleDelete = (id: string) => {
     deleteBroker(id)
-    toast({ title: 'Excluído', description: 'Corretor removido com sucesso.' })
-  }
-
-  const handleSave = (e: FormEvent) => {
-    e.preventDefault()
-    if (!name || !level || !percentage) {
-      toast({ title: 'Atenção', description: 'Preencha todos os campos.', variant: 'destructive' })
-      return
-    }
-
-    const newBroker: Broker = {
-      id: editingId || crypto.randomUUID(),
-      name,
-      level: level as BrokerLevel,
-      percentage: Number(percentage),
-    }
-
-    if (editingId) {
-      updateBroker(newBroker)
-      toast({ title: 'Sucesso', description: 'Corretor atualizado com sucesso.' })
-    } else {
-      addBroker(newBroker)
-      toast({ title: 'Sucesso', description: 'Corretor adicionado com sucesso.' })
-    }
-
-    resetForm()
+    toast({ title: 'Removido', description: 'Colaborador removido com sucesso.' })
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
       <Card className="shadow-md border-blue-100/50">
-        <CardHeader className="bg-gradient-to-r from-white to-blue-50/30 pb-4">
-          <CardTitle>{editingId ? 'Editar Corretor' : 'Adicionar Corretor'}</CardTitle>
-          <CardDescription>
-            {editingId
-              ? 'Modifique os dados do corretor selecionado.'
-              : 'Cadastre um novo corretor e defina sua comissão padrão.'}
-          </CardDescription>
+        <CardHeader className="bg-gradient-to-r from-white to-blue-50/30 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle>Lista de Corretores / Colaboradores</CardTitle>
+            <CardDescription>
+              Gerencie a equipe, definindo cargos, níveis e porcentagens. As alterações são salvas
+              automaticamente ao sair do campo.
+            </CardDescription>
+          </div>
+          <Button onClick={handleAdd} className="gap-2 shrink-0 self-start sm:self-auto">
+            <Plus className="w-4 h-4" /> <span>Adicionar</span>
+          </Button>
         </CardHeader>
         <CardContent className="pt-6">
-          <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Carlos Mendes"
-                className="bg-white"
-              />
+          <div className="space-y-4">
+            <div className="hidden md:grid grid-cols-12 gap-4 px-2 text-sm font-medium text-muted-foreground">
+              <div className="col-span-3">Cargo</div>
+              <div className="col-span-4">Nome do Colaborador</div>
+              <div className="col-span-2">Nível</div>
+              <div className="col-span-2">Porcentagem (%)</div>
+              <div className="col-span-1 text-center">Ações</div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="level">Nível</Label>
-              <Select value={level} onValueChange={setLevel}>
-                <SelectTrigger id="level" className="bg-white">
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Júnior">Júnior</SelectItem>
-                  <SelectItem value="Pleno">Pleno</SelectItem>
-                  <SelectItem value="Sênior">Sênior</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="percentage">Porcentagem (%)</Label>
-              <Input
-                id="percentage"
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={percentage}
-                onChange={(e) => setPercentage(e.target.value)}
-                placeholder="Ex: 38"
-                className="bg-white"
-              />
-            </div>
-            <div className="md:col-span-4 flex justify-end gap-2 pt-2">
-              {editingId && (
-                <Button type="button" variant="outline" onClick={resetForm} className="gap-2">
-                  <X className="w-4 h-4" /> Cancelar
-                </Button>
-              )}
-              <Button type="submit" className="gap-2">
-                {editingId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                {editingId ? 'Salvar Alterações' : 'Adicionar'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
 
-      <Card className="shadow-md border-blue-100/50">
-        <CardHeader className="bg-gradient-to-r from-white to-blue-50/30 pb-4">
-          <CardTitle>Lista de Corretores</CardTitle>
-          <CardDescription>Gerencie os corretores cadastrados no sistema.</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {brokers.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              Nenhum corretor cadastrado.
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Nível</TableHead>
-                  <TableHead>Porcentagem</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            {brokers.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground bg-slate-50/50 rounded-lg border border-dashed">
+                Nenhum colaborador cadastrado.
+              </div>
+            ) : (
+              <div className="space-y-3">
                 {brokers.map((broker) => (
-                  <TableRow key={broker.id}>
-                    <TableCell className="font-medium text-slate-800">{broker.name}</TableCell>
-                    <TableCell>{broker.level}</TableCell>
-                    <TableCell>{broker.percentage}%</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(broker)}
-                        className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(broker.id)}
-                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                  <CollaboratorRow
+                    key={broker.id}
+                    broker={broker}
+                    onUpdate={updateBroker}
+                    onDelete={() => handleDelete(broker.id)}
+                  />
                 ))}
-              </TableBody>
-            </Table>
-          )}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function CollaboratorRow({
+  broker,
+  onUpdate,
+  onDelete,
+}: {
+  broker: Broker
+  onUpdate: (b: Broker) => void
+  onDelete: () => void
+}) {
+  const [localBroker, setLocalBroker] = useState(broker)
+  const [percentageStr, setPercentageStr] = useState(broker.percentage.toString())
+
+  useEffect(() => {
+    setLocalBroker(broker)
+    setPercentageStr(broker.percentage.toString())
+  }, [broker])
+
+  const handleChange = (field: keyof Broker, value: any) => {
+    const updated = { ...localBroker, [field]: value }
+
+    // Conditional level logic
+    if (field === 'role' && value !== 'Corretor') {
+      updated.level = ''
+    } else if (field === 'role' && value === 'Corretor' && !updated.level) {
+      updated.level = 'Júnior'
+    }
+
+    setLocalBroker(updated)
+
+    // Selects should auto-save immediately
+    if (field === 'role' || field === 'level') {
+      let finalPercentage = parseFloat(percentageStr)
+      if (isNaN(finalPercentage)) finalPercentage = 0
+      updated.percentage = finalPercentage
+      onUpdate(updated)
+    }
+  }
+
+  const handleBlur = () => {
+    let finalPercentage = parseFloat(percentageStr)
+    if (isNaN(finalPercentage)) finalPercentage = 0
+
+    const updated = { ...localBroker, percentage: finalPercentage }
+    if (JSON.stringify(updated) !== JSON.stringify(broker)) {
+      onUpdate(updated)
+    }
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center p-4 md:p-2 bg-white border rounded-lg md:border-transparent md:bg-transparent transition-colors hover:bg-slate-50/50 group">
+      <div className="col-span-3 space-y-1.5 md:space-y-0">
+        <label className="text-xs font-medium md:hidden text-muted-foreground">Cargo</label>
+        <Select
+          value={localBroker.role || 'Corretor'}
+          onValueChange={(v) => handleChange('role', v)}
+        >
+          <SelectTrigger className="bg-white">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Corretor">Corretor</SelectItem>
+            <SelectItem value="Gerente de Equipe">Gerente de Equipe</SelectItem>
+            <SelectItem value="Gerente Geral">Gerente Geral</SelectItem>
+            <SelectItem value="Apoio">Apoio</SelectItem>
+            <SelectItem value="Captador">Captador</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="col-span-4 space-y-1.5 md:space-y-0">
+        <label className="text-xs font-medium md:hidden text-muted-foreground">
+          Nome do Colaborador
+        </label>
+        <Input
+          value={localBroker.name}
+          onChange={(e) => handleChange('name', e.target.value)}
+          onBlur={handleBlur}
+          placeholder="Ex: João Silva"
+          className="bg-white"
+        />
+      </div>
+
+      <div className="col-span-2 space-y-1.5 md:space-y-0">
+        <label className="text-xs font-medium md:hidden text-muted-foreground">Nível</label>
+        {!localBroker.role || localBroker.role === 'Corretor' ? (
+          <Select
+            value={localBroker.level || 'Júnior'}
+            onValueChange={(v) => handleChange('level', v)}
+          >
+            <SelectTrigger className="bg-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Júnior">Júnior</SelectItem>
+              <SelectItem value="Pleno">Pleno</SelectItem>
+              <SelectItem value="Sênior">Sênior</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="h-10 w-full rounded-md border border-input bg-slate-50/50 px-3 py-2 text-sm text-muted-foreground/50 cursor-not-allowed flex items-center">
+            N/A
+          </div>
+        )}
+      </div>
+
+      <div className="col-span-2 space-y-1.5 md:space-y-0">
+        <label className="text-xs font-medium md:hidden text-muted-foreground">
+          Porcentagem (%)
+        </label>
+        <Input
+          type="number"
+          step="0.01"
+          value={percentageStr}
+          onChange={(e) => setPercentageStr(e.target.value)}
+          onBlur={handleBlur}
+          placeholder="0"
+          className="bg-white"
+        />
+      </div>
+
+      <div className="col-span-1 flex justify-end md:justify-center mt-2 md:mt-0 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onDelete}
+          className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8"
+          title="Remover Colaborador"
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
     </div>
   )
 }

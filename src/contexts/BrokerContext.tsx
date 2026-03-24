@@ -10,8 +10,8 @@ interface BrokerContextData {
 }
 
 const INITIAL_BROKERS: Broker[] = [
-  { id: '1', name: 'João Silva', level: 'Pleno', percentage: 38 },
-  { id: '2', name: 'Maria Souza', level: 'Sênior', percentage: 43 },
+  { id: '1', role: 'Corretor', name: 'João Silva', level: 'Pleno', percentage: 38 },
+  { id: '2', role: 'Gerente Geral', name: 'Maria Souza', level: '', percentage: 10 },
 ]
 
 const BrokerContext = createContext<BrokerContextData>({} as BrokerContextData)

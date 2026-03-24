@@ -36,7 +36,7 @@ export default function Settings() {
             Regras de Comissão
           </TabsTrigger>
           <TabsTrigger value="corretores" className="py-2 sm:py-1.5 text-xs sm:text-sm">
-            Configuração de Corretores
+            Corretores / Colaboradores
           </TabsTrigger>
         </TabsList>
 

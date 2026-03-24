@@ -11,9 +11,9 @@ export function Header() {
   const capitalizedDate = today.charAt(0).toUpperCase() + today.slice(1)
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur-md shadow-sm px-4 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur-md shadow-sm px-4 h-16 flex items-center justify-between shrink-0">
       <div className="flex items-center gap-4">
-        <SidebarTrigger className="md:hidden" />
+        <SidebarTrigger className="-ml-2 text-slate-500 hover:text-slate-900 transition-colors" />
         <h1 className="text-xl font-bold text-primary hidden sm:block">
           Controle Financeiro - Luciana
         </h1>

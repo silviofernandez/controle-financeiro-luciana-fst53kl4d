@@ -10,12 +10,14 @@ export function DashboardSummary() {
   const [month, setMonth] = useState('2026-02')
 
   const filteredTx =
-    month === 'all' ? transactions : transactions.filter((t) => t.data.startsWith(month))
+    month === 'all'
+      ? transactions
+      : transactions.filter((t) => typeof t.data === 'string' && t.data.startsWith(month))
 
   const calculateUnitTotal = (unit: string) => {
     return filteredTx
       .filter((t) => t.unidade === unit && t.tipo === 'despesa' && !t.isCheckpoint)
-      .reduce((acc, t) => acc + t.valor, 0)
+      .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
   }
 
   const totalJau = calculateUnitTotal('Jau')
@@ -25,16 +27,20 @@ export function DashboardSummary() {
 
   const receitas = filteredTx
     .filter((t) => t.tipo === 'receita' && !t.isCheckpoint)
-    .reduce((acc, t) => acc + t.valor, 0)
+    .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
   const despesas = filteredTx
     .filter((t) => t.tipo === 'despesa' && !t.isCheckpoint)
-    .reduce((acc, t) => acc + t.valor, 0)
+    .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
   const saldoGeral = receitas - despesas
 
   const checkpoints = filteredTx
     .filter((t) => t.isCheckpoint)
-    .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
-  const lastCheckpoint = checkpoints[0]?.valor || 0
+    .sort((a, b) => {
+      const dateA = a.data && typeof a.data === 'string' ? new Date(a.data).getTime() : 0
+      const dateB = b.data && typeof b.data === 'string' ? new Date(b.data).getTime() : 0
+      return dateB - dateA
+    })
+  const lastCheckpoint = checkpoints[0]?.valor ? Number(checkpoints[0].valor) : 0
 
   return (
     <Card className="mt-6 border-blue-100/50 shadow-md">

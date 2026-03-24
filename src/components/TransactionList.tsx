@@ -22,8 +22,21 @@ export function TransactionList() {
     (t) =>
       (filterUnidade === 'all' || t.unidade === filterUnidade) &&
       (filterBanco === 'all' || t.banco === filterBanco) &&
-      (!searchTerm || t.descricao.toLowerCase().includes(searchTerm.toLowerCase())),
+      (!searchTerm ||
+        (typeof t.descricao === 'string' &&
+          t.descricao.toLowerCase().includes(searchTerm.toLowerCase()))),
   )
+
+  const formatDateSafe = (dateString: string | undefined | null) => {
+    try {
+      if (!dateString || typeof dateString !== 'string') return '-'
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return '-'
+      return format(date, 'dd/MM/yy', { locale: ptBR })
+    } catch {
+      return '-'
+    }
+  }
 
   return (
     <Card className="shadow-md border-blue-100/50 flex-1 flex flex-col h-full overflow-hidden">
@@ -111,13 +124,13 @@ export function TransactionList() {
                     }`}
                   >
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {format(new Date(t.data), 'dd/MM/yy', { locale: ptBR })}
+                      {formatDateSafe(t.data)}
                     </TableCell>
                     <TableCell>
                       <span
                         className={`font-medium block ${t.isCheckpoint ? 'text-emerald-800 italic' : ''}`}
                       >
-                        {t.descricao}
+                        {typeof t.descricao === 'string' ? t.descricao : 'Sem descrição'}
                       </span>
                       <div className="flex md:hidden gap-1 mt-1.5 flex-wrap">
                         <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-white/50">
@@ -170,7 +183,7 @@ export function TransactionList() {
                       }`}
                     >
                       {t.isCheckpoint ? '' : t.tipo === 'receita' ? '+' : '-'}{' '}
-                      {formatCurrency(t.valor)}
+                      {formatCurrency(Number(t.valor) || 0)}
                     </TableCell>
                     <TableCell>
                       <Button

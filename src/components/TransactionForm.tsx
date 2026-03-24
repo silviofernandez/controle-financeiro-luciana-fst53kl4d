@@ -59,7 +59,16 @@ export function TransactionForm() {
   const [categoria, setCategoria] = useState<string>('Outros')
   const [descricao, setDescricao] = useState('')
   const [valorInput, setValorInput] = useState('')
-  const [data, setData] = useState(new Date().toISOString().split('T')[0])
+
+  const [data, setData] = useState(() => {
+    try {
+      const isoString = new Date().toISOString()
+      return typeof isoString === 'string' && isoString ? isoString.split('T')[0] : ''
+    } catch {
+      return ''
+    }
+  })
+
   const [unidade, setUnidade] = useState<Unidade>('Geral')
   const [banco, setBanco] = useState<Banco>('Outros')
   const [isCheckpoint, setIsCheckpoint] = useState(false)
@@ -86,15 +95,22 @@ export function TransactionForm() {
 
   const historicDescriptions = useMemo(() => {
     const relevantTransactions = transactions.filter((t) => t.tipo === tipo && !t.isCheckpoint)
-    const descriptions = relevantTransactions.map((t) => t.descricao.trim()).filter(Boolean)
+    const descriptions = relevantTransactions
+      .map((t) => (typeof t.descricao === 'string' ? t.descricao.trim() : ''))
+      .filter(Boolean)
     return Array.from(new Set(descriptions))
   }, [transactions, tipo])
 
   const suggestions = useMemo(() => {
-    if (!descricao) return historicDescriptions.slice(0, 10)
+    if (!descricao || typeof descricao !== 'string') return historicDescriptions.slice(0, 10)
     const lowerInput = descricao.toLowerCase()
     return historicDescriptions
-      .filter((d) => d.toLowerCase().includes(lowerInput) && d.toLowerCase() !== lowerInput)
+      .filter(
+        (d) =>
+          typeof d === 'string' &&
+          d.toLowerCase().includes(lowerInput) &&
+          d.toLowerCase() !== lowerInput,
+      )
       .slice(0, 10)
   }, [descricao, historicDescriptions])
 
@@ -109,6 +125,7 @@ export function TransactionForm() {
   }, [])
 
   useEffect(() => {
+    if (typeof descricao !== 'string') return
     const desc = descricao.toLowerCase()
     for (const [key, b] of Object.entries(BANCO_MAP)) {
       if (desc.includes(key)) {
@@ -177,9 +194,9 @@ export function TransactionForm() {
     await new Promise((r) => setTimeout(r, 400))
     addTransaction({
       tipo,
-      descricao: descricao.trim(),
+      descricao: typeof descricao === 'string' ? descricao.trim() : '',
       valor: parseCurrency(valorInput),
-      data: new Date(data).toISOString(),
+      data: data ? new Date(data).toISOString() : new Date().toISOString(),
       categoria: isCommission ? 'Comissão' : categoria,
       unidade: tipo === 'despesa' && despesaTipo === 'cia' && !isCheckpoint ? 'Geral' : unidade,
       banco,
@@ -215,7 +232,7 @@ export function TransactionForm() {
       return
     }
 
-    const launchDate = new Date(data).toISOString()
+    const launchDate = data ? new Date(data).toISOString() : new Date().toISOString()
     const gross = parseCurrency(valorInput)
 
     summaryData.forEach((item) => {
@@ -353,8 +370,10 @@ export function TransactionForm() {
     }
 
     if (!isCheckpoint) {
-      const lowerDesc = descricao.trim().toLowerCase()
-      const exists = historicDescriptions.some((d) => d.toLowerCase() === lowerDesc)
+      const lowerDesc = typeof descricao === 'string' ? descricao.trim().toLowerCase() : ''
+      const exists = historicDescriptions.some(
+        (d) => typeof d === 'string' && d.toLowerCase() === lowerDesc,
+      )
       if (!exists && historicDescriptions.length > 0) {
         setConfirmDialogVisible(true)
         return

@@ -4,6 +4,7 @@ import { Broker } from '@/types'
 interface BrokerContextData {
   brokers: Broker[]
   addBroker: (b: Broker) => void
+  addBrokers: (brokers: Broker[]) => void
   updateBroker: (b: Broker) => void
   deleteBroker: (id: string) => void
 }
@@ -32,6 +33,10 @@ export const BrokerProvider = ({ children }: { children: ReactNode }) => {
     setBrokers((prev) => [...prev, b])
   }
 
+  const addBrokers = (newBrokers: Broker[]) => {
+    setBrokers((prev) => [...prev, ...newBrokers])
+  }
+
   const updateBroker = (b: Broker) => {
     setBrokers((prev) => prev.map((existing) => (existing.id === b.id ? b : existing)))
   }
@@ -41,7 +46,7 @@ export const BrokerProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <BrokerContext.Provider value={{ brokers, addBroker, updateBroker, deleteBroker }}>
+    <BrokerContext.Provider value={{ brokers, addBroker, addBrokers, updateBroker, deleteBroker }}>
       {children}
     </BrokerContext.Provider>
   )

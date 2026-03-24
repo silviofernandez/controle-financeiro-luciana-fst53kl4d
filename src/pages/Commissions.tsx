@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useCommissions } from '@/contexts/CommissionContext'
 import { useTransactions } from '@/contexts/TransactionContext'
+import { useBrokers } from '@/contexts/BrokerContext'
 import { CommissionSummary } from '@/components/CommissionSummary'
 import { CommissionSummaryModal, SummaryData } from '@/components/CommissionSummaryModal'
+import { UnregisteredBrokersModal, MissingNameInfo } from '@/components/UnregisteredBrokersModal'
 import { saveCommission } from '@/services/supabase'
 import { toast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
@@ -18,10 +20,12 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
+import { Broker } from '@/types'
 
 export default function Commissions() {
   const { teams } = useCommissions()
   const { addTransaction } = useTransactions()
+  const { brokers, addBrokers } = useBrokers()
 
   const [teamId, setTeamId] = useState<string>(teams[0]?.id || '')
   const [grossValueRaw, setGrossValueRaw] = useState('1000000') // R$ 10.000,00
@@ -32,6 +36,8 @@ export default function Commissions() {
   const [participantNames, setParticipantNames] = useState<Record<string, string>>({})
 
   const [modalOpen, setModalOpen] = useState(false)
+  const [missingNamesModalOpen, setMissingNamesModalOpen] = useState(false)
+  const [missingNames, setMissingNames] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
 
   const team = useMemo(() => teams.find((t) => t.id === teamId), [teamId, teams])
@@ -83,6 +89,55 @@ export default function Commissions() {
     return data
   }, [team, grossValue, useTax, useLegal, selectedVariations, participantNames])
 
+  const handleReviewAndLaunch = () => {
+    if (!team) return
+
+    const enteredNames = Object.values(participantNames)
+      .map((n) => n.trim())
+      .filter(Boolean)
+
+    const existingNamesLower = brokers.map((b) => b.name.toLowerCase())
+
+    const missing = enteredNames.filter((name) => !existingNamesLower.includes(name.toLowerCase()))
+
+    const uniqueMissing = Array.from(new Set(missing))
+
+    if (uniqueMissing.length > 0) {
+      setMissingNames(uniqueMissing)
+      setMissingNamesModalOpen(true)
+    } else {
+      setModalOpen(true)
+    }
+  }
+
+  const handleRegisterMissing = (resolvedNames: MissingNameInfo[]) => {
+    setParticipantNames((prev) => {
+      const updated = { ...prev }
+      Object.keys(updated).forEach((ruleId) => {
+        const currentVal = updated[ruleId].trim()
+        const match = resolvedNames.find(
+          (r) => r.original.toLowerCase() === currentVal.toLowerCase(),
+        )
+        if (match) {
+          updated[ruleId] = match.edited
+        }
+      })
+      return updated
+    })
+
+    const newBrokers: Broker[] = resolvedNames.map((r) => ({
+      id: crypto.randomUUID(),
+      name: r.edited,
+      level: 'Padrão',
+      percentage: 0,
+    }))
+
+    addBrokers(newBrokers)
+
+    setMissingNamesModalOpen(false)
+    setModalOpen(true)
+  }
+
   const handleConfirm = async () => {
     if (!team) return
     setLoading(true)
@@ -110,7 +165,6 @@ export default function Commissions() {
 
       await saveCommission(commissionData, linesData)
 
-      // Automated Spreadsheet Update (Context)
       summaryData.forEach((item) => {
         const isTax = item.id === 'impostos'
         const isLegal = item.id === 'juridico'
@@ -254,7 +308,7 @@ export default function Commissions() {
             </CardContent>
           </Card>
 
-          <Button size="lg" className="w-full" onClick={() => setModalOpen(true)}>
+          <Button size="lg" className="w-full" onClick={handleReviewAndLaunch}>
             Revisar e Lançar Comissão
           </Button>
         </div>
@@ -277,6 +331,13 @@ export default function Commissions() {
         data={summaryData}
         onConfirm={handleConfirm}
         loading={loading}
+      />
+
+      <UnregisteredBrokersModal
+        open={missingNamesModalOpen}
+        onOpenChange={setMissingNamesModalOpen}
+        unregisteredNames={missingNames}
+        onConfirm={handleRegisterMissing}
       />
     </div>
   )

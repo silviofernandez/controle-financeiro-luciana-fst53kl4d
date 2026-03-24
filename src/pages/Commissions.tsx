@@ -65,7 +65,8 @@ export default function Commissions() {
     team.rules.forEach((rule) => {
       const varId = selectedVariations[rule.id]
       const variation = rule.variations.find((v) => v.id === varId) || rule.variations[0]
-      const name = participantNames[rule.id] || ''
+      const rawName = participantNames[rule.id]
+      const name = typeof rawName === 'string' ? rawName : ''
 
       let amount = 0
       if (variation.type === 'percentage') {
@@ -92,18 +93,20 @@ export default function Commissions() {
   const handleReviewAndLaunch = () => {
     if (!team) return
 
-    // Safely extract names with defensive checks to prevent runtime errors (e.g., e.split undefined object).
-    // Allowing comma-separated names gracefully by splitting only on defined string values.
+    // Safely extract names with defensive checks to prevent runtime errors (e.g., undefined object string methods).
     const enteredNames = Object.values(participantNames)
-      .filter(Boolean)
-      .flatMap((n) => (typeof n === 'string' ? n.split(',') : []))
-      .map((n) => (n || '').trim())
-      .filter(Boolean)
+      .filter((n): n is string => typeof n === 'string' && n.trim().length > 0)
+      .flatMap((n) => n.split(','))
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0)
 
-    const existingNamesLower = brokers.map((b) => (b?.name || '').toLowerCase())
+    const existingNamesLower = brokers
+      .map((b) => b?.name)
+      .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+      .map((name) => name.toLowerCase())
 
     const missing = enteredNames.filter(
-      (name) => !existingNamesLower.includes((name || '').toLowerCase()),
+      (name) => typeof name === 'string' && !existingNamesLower.includes(name.toLowerCase()),
     )
 
     const uniqueMissing = Array.from(new Set(missing))
@@ -120,11 +123,15 @@ export default function Commissions() {
     setParticipantNames((prev) => {
       const updated = { ...prev }
       Object.keys(updated).forEach((ruleId) => {
-        const currentVal = (updated[ruleId] || '').trim()
-        const match = resolvedNames.find(
-          (r) => (r?.original || '').toLowerCase() === currentVal.toLowerCase(),
-        )
-        if (match) {
+        const currentVal = updated[ruleId]
+        const currentStr = typeof currentVal === 'string' ? currentVal.trim() : ''
+
+        const match = resolvedNames.find((r) => {
+          const origStr = typeof r?.original === 'string' ? r.original : ''
+          return origStr.toLowerCase() === currentStr.toLowerCase()
+        })
+
+        if (match && typeof match.edited === 'string') {
           updated[ruleId] = match.edited
         }
       })
@@ -133,7 +140,7 @@ export default function Commissions() {
 
     const newBrokers: Broker[] = resolvedNames.map((r) => ({
       id: crypto.randomUUID(),
-      name: r.edited,
+      name: typeof r.edited === 'string' && r.edited.trim() !== '' ? r.edited : 'Participante',
       level: 'Padrão',
       percentage: 0,
     }))
@@ -148,17 +155,24 @@ export default function Commissions() {
     if (!team) return
     setLoading(true)
     try {
-      const brokerData = summaryData.find((d) => (d?.role || '').toLowerCase().includes('corretor'))
-      const capturerData = summaryData.find((d) =>
-        (d?.role || '').toLowerCase().includes('captador'),
-      )
+      const brokerData = summaryData.find((d) => {
+        const roleStr = d?.role
+        return typeof roleStr === 'string' && roleStr.toLowerCase().includes('corretor')
+      })
+
+      const capturerData = summaryData.find((d) => {
+        const roleStr = d?.role
+        return typeof roleStr === 'string' && roleStr.toLowerCase().includes('captador')
+      })
 
       const commissionData = {
-        description: `Comissão ${team?.name || 'Desconhecida'}`,
+        description: `Comissão ${typeof team?.name === 'string' ? team.name : 'Desconhecida'}`,
         total_value: grossValue,
         team_id: team.id,
-        broker_id: brokerData?.name ? crypto.randomUUID() : null,
-        capturer_id: capturerData?.name ? crypto.randomUUID() : null,
+        broker_id:
+          brokerData?.name && typeof brokerData.name === 'string' ? crypto.randomUUID() : null,
+        capturer_id:
+          capturerData?.name && typeof capturerData.name === 'string' ? crypto.randomUUID() : null,
         has_invoice: useTax,
         has_legal: useLegal,
         legal_value: useLegal ? 200 : 0,
@@ -166,8 +180,8 @@ export default function Commissions() {
       }
 
       const linesData = summaryData.map((item) => ({
-        role_name: item?.role || '',
-        value: item?.value || 0,
+        role_name: typeof item?.role === 'string' ? item.role : '',
+        value: typeof item?.value === 'number' ? item.value : 0,
         created_at: new Date().toISOString(),
       }))
 
@@ -176,15 +190,22 @@ export default function Commissions() {
       summaryData.forEach((item) => {
         const isTax = item.id === 'impostos'
         const isLegal = item.id === 'juridico'
+        const safeRole = typeof item?.role === 'string' ? item.role : ''
+        const safeName =
+          typeof item?.name === 'string'
+            ? item.name
+            : typeof team?.name === 'string'
+              ? team.name
+              : ''
 
         addTransaction({
           tipo: 'despesa',
           descricao: isTax
-            ? `Imposto Nota Fiscal - ${team?.name || ''}`
+            ? `Imposto Nota Fiscal - ${typeof team?.name === 'string' ? team.name : ''}`
             : isLegal
-              ? `Despesa Jurídica - ${team?.name || ''}`
-              : `Repasse ${item?.role || ''} - ${item?.name || team?.name || ''}`,
-          valor: item.value,
+              ? `Despesa Jurídica - ${typeof team?.name === 'string' ? team.name : ''}`
+              : `Repasse ${safeRole} - ${safeName}`,
+          valor: typeof item.value === 'number' ? item.value : 0,
           data: new Date().toISOString(),
           categoria: isTax ? 'Impostos' : isLegal ? 'Fornecedores' : 'Comissão',
           unidade: 'Geral',
@@ -195,7 +216,7 @@ export default function Commissions() {
 
       addTransaction({
         tipo: 'receita',
-        descricao: `Receita Comissão ${team?.name || ''}`,
+        descricao: `Receita Comissão ${typeof team?.name === 'string' ? team.name : ''}`,
         valor: grossValue,
         data: new Date().toISOString(),
         categoria: 'Trabalho',
@@ -253,7 +274,10 @@ export default function Commissions() {
                   <Label>Valor Bruto (R$)</Label>
                   <Input
                     value={formatCurrency(grossValue)}
-                    onChange={(e) => setGrossValueRaw((e.target.value || '').replace(/\D/g, ''))}
+                    onChange={(e) => {
+                      const val = e?.target?.value
+                      setGrossValueRaw(typeof val === 'string' ? val.replace(/\D/g, '') : '')
+                    }}
                   />
                 </div>
               </div>
@@ -284,19 +308,30 @@ export default function Commissions() {
                     <Label>{rule.role}</Label>
                     <Input
                       placeholder="Nome (opcional)"
-                      value={participantNames[rule.id] || ''}
-                      onChange={(e) =>
-                        setParticipantNames((prev) => ({
-                          ...prev,
-                          [rule.id]: e.target.value || '',
-                        }))
+                      value={
+                        typeof participantNames[rule.id] === 'string'
+                          ? participantNames[rule.id]
+                          : ''
                       }
+                      onChange={(e) => {
+                        const val = e?.target?.value
+                        if (typeof val === 'string') {
+                          setParticipantNames((prev) => ({
+                            ...prev,
+                            [rule.id]: val,
+                          }))
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>Variação / Nível</Label>
                     <Select
-                      value={selectedVariations[rule.id] || ''}
+                      value={
+                        typeof selectedVariations[rule.id] === 'string'
+                          ? selectedVariations[rule.id]
+                          : ''
+                      }
                       onValueChange={(v) =>
                         setSelectedVariations((prev) => ({ ...prev, [rule.id]: v }))
                       }

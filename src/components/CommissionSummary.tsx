@@ -29,27 +29,29 @@ export function CommissionSummary({
   let totalPercentage = 0
   let totalFixed = 0
 
-  const shares = team.rules.map((rule) => {
-    const varId = selectedVariations[rule.id]
-    const variation = rule.variations.find((v) => v.id === varId) || rule.variations[0]
-    const name = participantNames[rule.id] || 'Não informado'
+  const shares = (team?.rules || []).map((rule) => {
+    const varId = selectedVariations?.[rule.id]
+    const variation = rule.variations?.find((v) => v.id === varId) || rule.variations?.[0]
+
+    const rawName = participantNames?.[rule.id]
+    const name = typeof rawName === 'string' && rawName.trim() !== '' ? rawName : 'Não informado'
 
     let amount = 0
-    if (variation.type === 'percentage') {
-      amount = netBase * (variation.value / 100)
-      totalPercentage += variation.value
+    if (variation?.type === 'percentage') {
+      amount = netBase * ((variation?.value || 0) / 100)
+      totalPercentage += variation?.value || 0
     } else {
-      amount = variation.value
+      amount = variation?.value || 0
       totalFixed += amount
     }
 
     return {
       ruleId: rule.id,
-      role: rule.role,
+      role: rule.role || '',
       name,
-      varName: variation.name,
-      isPct: variation.type === 'percentage',
-      val: variation.value,
+      varName: variation?.name || 'Padrão',
+      isPct: variation?.type === 'percentage',
+      val: variation?.value || 0,
       amount,
     }
   })

@@ -32,19 +32,28 @@ export function UnregisteredBrokersModal({
   const [names, setNames] = useState<MissingNameInfo[]>([])
 
   useEffect(() => {
-    if (open) {
-      setNames(unregisteredNames.map((n) => ({ original: n, edited: n })))
+    if (open && Array.isArray(unregisteredNames)) {
+      setNames(
+        unregisteredNames
+          .filter((n) => typeof n === 'string')
+          .map((n) => ({ original: n, edited: n })),
+      )
     }
   }, [open, unregisteredNames])
 
   const handleNameChange = (index: number, val: string) => {
     const updated = [...names]
-    updated[index].edited = val
+    if (updated[index]) {
+      updated[index].edited = typeof val === 'string' ? val : ''
+    }
     setNames(updated)
   }
 
   const handleConfirm = () => {
-    onConfirm(names.filter((n) => n.edited.trim() !== ''))
+    const validNames = names.filter((n) => {
+      return n && typeof n.edited === 'string' && n.edited.trim() !== ''
+    })
+    onConfirm(validNames)
   }
 
   return (
@@ -66,7 +75,7 @@ export function UnregisteredBrokersModal({
               </Label>
               <Input
                 value={item.edited}
-                onChange={(e) => handleNameChange(index, e.target.value)}
+                onChange={(e) => handleNameChange(index, e?.target?.value || '')}
                 placeholder="Nome completo do participante"
               />
             </div>

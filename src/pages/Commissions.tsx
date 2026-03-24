@@ -92,13 +92,19 @@ export default function Commissions() {
   const handleReviewAndLaunch = () => {
     if (!team) return
 
+    // Safely extract names with defensive checks to prevent runtime errors (e.g., e.split undefined object).
+    // Allowing comma-separated names gracefully by splitting only on defined string values.
     const enteredNames = Object.values(participantNames)
-      .map((n) => n.trim())
+      .filter(Boolean)
+      .flatMap((n) => (typeof n === 'string' ? n.split(',') : []))
+      .map((n) => (n || '').trim())
       .filter(Boolean)
 
-    const existingNamesLower = brokers.map((b) => b.name.toLowerCase())
+    const existingNamesLower = brokers.map((b) => (b?.name || '').toLowerCase())
 
-    const missing = enteredNames.filter((name) => !existingNamesLower.includes(name.toLowerCase()))
+    const missing = enteredNames.filter(
+      (name) => !existingNamesLower.includes((name || '').toLowerCase()),
+    )
 
     const uniqueMissing = Array.from(new Set(missing))
 
@@ -114,9 +120,9 @@ export default function Commissions() {
     setParticipantNames((prev) => {
       const updated = { ...prev }
       Object.keys(updated).forEach((ruleId) => {
-        const currentVal = updated[ruleId].trim()
+        const currentVal = (updated[ruleId] || '').trim()
         const match = resolvedNames.find(
-          (r) => r.original.toLowerCase() === currentVal.toLowerCase(),
+          (r) => (r?.original || '').toLowerCase() === currentVal.toLowerCase(),
         )
         if (match) {
           updated[ruleId] = match.edited
@@ -142,11 +148,13 @@ export default function Commissions() {
     if (!team) return
     setLoading(true)
     try {
-      const brokerData = summaryData.find((d) => d.role.toLowerCase().includes('corretor'))
-      const capturerData = summaryData.find((d) => d.role.toLowerCase().includes('captador'))
+      const brokerData = summaryData.find((d) => (d?.role || '').toLowerCase().includes('corretor'))
+      const capturerData = summaryData.find((d) =>
+        (d?.role || '').toLowerCase().includes('captador'),
+      )
 
       const commissionData = {
-        description: `Comissão ${team.name}`,
+        description: `Comissão ${team?.name || 'Desconhecida'}`,
         total_value: grossValue,
         team_id: team.id,
         broker_id: brokerData?.name ? crypto.randomUUID() : null,
@@ -158,8 +166,8 @@ export default function Commissions() {
       }
 
       const linesData = summaryData.map((item) => ({
-        role_name: item.role,
-        value: item.value,
+        role_name: item?.role || '',
+        value: item?.value || 0,
         created_at: new Date().toISOString(),
       }))
 
@@ -172,10 +180,10 @@ export default function Commissions() {
         addTransaction({
           tipo: 'despesa',
           descricao: isTax
-            ? `Imposto Nota Fiscal - ${team.name}`
+            ? `Imposto Nota Fiscal - ${team?.name || ''}`
             : isLegal
-              ? `Despesa Jurídica - ${team.name}`
-              : `Repasse ${item.role} - ${item.name || team.name}`,
+              ? `Despesa Jurídica - ${team?.name || ''}`
+              : `Repasse ${item?.role || ''} - ${item?.name || team?.name || ''}`,
           valor: item.value,
           data: new Date().toISOString(),
           categoria: isTax ? 'Impostos' : isLegal ? 'Fornecedores' : 'Comissão',
@@ -187,7 +195,7 @@ export default function Commissions() {
 
       addTransaction({
         tipo: 'receita',
-        descricao: `Receita Comissão ${team.name}`,
+        descricao: `Receita Comissão ${team?.name || ''}`,
         valor: grossValue,
         data: new Date().toISOString(),
         categoria: 'Trabalho',
@@ -245,7 +253,7 @@ export default function Commissions() {
                   <Label>Valor Bruto (R$)</Label>
                   <Input
                     value={formatCurrency(grossValue)}
-                    onChange={(e) => setGrossValueRaw(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) => setGrossValueRaw((e.target.value || '').replace(/\D/g, ''))}
                   />
                 </div>
               </div>
@@ -278,7 +286,10 @@ export default function Commissions() {
                       placeholder="Nome (opcional)"
                       value={participantNames[rule.id] || ''}
                       onChange={(e) =>
-                        setParticipantNames((prev) => ({ ...prev, [rule.id]: e.target.value }))
+                        setParticipantNames((prev) => ({
+                          ...prev,
+                          [rule.id]: e.target.value || '',
+                        }))
                       }
                     />
                   </div>

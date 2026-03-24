@@ -31,6 +31,8 @@ export interface SummaryData {
   role: string
   name?: string
   value: number
+  variation_name?: string
+  percentage?: number | null
 }
 
 interface CommissionSummaryModalProps {
@@ -144,7 +146,7 @@ export function CommissionSummaryModal({
                     {item.role}
                     {item.name && item.name !== 'nao_informado' && (
                       <span className="text-xs text-muted-foreground font-normal block">
-                        {item.name}
+                        {item.name} {item.percentage ? `(${item.percentage}%)` : ''}
                       </span>
                     )}
                   </TableCell>

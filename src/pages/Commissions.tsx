@@ -5,7 +5,7 @@ import { useBrokers } from '@/contexts/BrokerContext'
 import { CommissionSummary } from '@/components/CommissionSummary'
 import { CommissionSummaryModal, SummaryData } from '@/components/CommissionSummaryModal'
 import { UnregisteredBrokersModal, MissingNameInfo } from '@/components/UnregisteredBrokersModal'
-import { saveCommission } from '@/services/supabase'
+import { saveCommission, CommissionPayload, CommissionLinePayload } from '@/services/supabase'
 import { toast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,7 +20,11 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
-import { Broker } from '@/types'
+import { Broker, Transaction } from '@/types'
+
+const isValidUUID = (uuid: any) =>
+  typeof uuid === 'string' &&
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(uuid)
 
 export default function Commissions() {
   const { teams } = useCommissions()
@@ -76,7 +80,14 @@ export default function Commissions() {
       }
 
       if (amount > 0) {
-        data.push({ id: rule.id, role: rule.role, name, value: amount })
+        data.push({
+          id: rule.id,
+          role: rule.role,
+          name,
+          value: amount,
+          variation_name: variation.name,
+          percentage: variation.type === 'percentage' ? variation.value : null,
+        })
       }
     })
 
@@ -93,7 +104,6 @@ export default function Commissions() {
   const handleReviewAndLaunch = () => {
     if (!team) return
 
-    // Safely extract names with defensive optional chaining to prevent runtime errors
     const enteredNames = Object.values(participantNames)
       .flatMap((n) => (typeof n === 'string' ? n?.split?.(',') || [] : []))
       .map((n) => (typeof n === 'string' ? n?.trim?.() || '' : ''))
@@ -167,22 +177,31 @@ export default function Commissions() {
         return typeof roleStr === 'string' && roleStr.toLowerCase().includes('captador')
       })
 
-      const commissionData = {
+      const brokerRecord = brokerData?.name
+        ? brokers.find((b) => b?.name?.toLowerCase() === brokerData.name?.toLowerCase())
+        : null
+
+      const capturerRecord = capturerData?.name
+        ? brokers.find((b) => b?.name?.toLowerCase() === capturerData.name?.toLowerCase())
+        : null
+
+      const commissionData: CommissionPayload = {
         description: `Comissão ${typeof team?.name === 'string' ? team.name : 'Desconhecida'}`,
         total_value: grossValue,
-        team_id: team.id,
-        broker_id:
-          brokerData?.name && typeof brokerData.name === 'string' ? crypto.randomUUID() : null,
-        capturer_id:
-          capturerData?.name && typeof capturerData.name === 'string' ? crypto.randomUUID() : null,
+        team_id: isValidUUID(team.id) ? team.id : null,
+        broker_id: isValidUUID(brokerRecord?.id) ? brokerRecord?.id || null : null,
+        capturer_id: isValidUUID(capturerRecord?.id) ? capturerRecord?.id || null : null,
         has_invoice: useTax,
         has_legal: useLegal,
         legal_value: useLegal ? 200 : 0,
         created_at: new Date().toISOString(),
       }
 
-      const linesData = summaryData.map((item) => ({
+      const linesData: CommissionLinePayload[] = summaryData.map((item) => ({
         role_name: typeof item?.role === 'string' ? item.role : '',
+        participant_name: item.name || null,
+        level: item.variation_name || null,
+        percentage: item.percentage || null,
         value: typeof item?.value === 'number' ? item.value : 0,
         created_at: new Date().toISOString(),
       }))
@@ -200,7 +219,7 @@ export default function Commissions() {
               ? team.name
               : ''
 
-        addTransaction({
+        const baseTx: Parameters<typeof addTransaction>[0] = {
           tipo: 'despesa',
           descricao: isTax
             ? `Imposto Nota Fiscal - ${typeof team?.name === 'string' ? team.name : ''}`
@@ -213,7 +232,22 @@ export default function Commissions() {
           unidade: 'Geral',
           banco: 'Outros',
           classificacao: 'variavel',
-        })
+          equipe: typeof team?.name === 'string' ? team.name : undefined,
+        }
+
+        if (safeRole.toLowerCase().includes('corretor')) {
+          baseTx.corretor = safeName
+          baseTx.corretorNivel = item.variation_name
+          baseTx.corretorPorcentagem = item.percentage || undefined
+        }
+
+        if (safeRole.toLowerCase().includes('captador')) {
+          baseTx.captador = safeName
+          baseTx.captadorNivel = item.variation_name
+          baseTx.captadorPorcentagem = item.percentage || undefined
+        }
+
+        addTransaction(baseTx)
       })
 
       addTransaction({
@@ -224,6 +258,8 @@ export default function Commissions() {
         categoria: 'Trabalho',
         unidade: 'Geral',
         banco: 'Outros',
+        receitaTipo: 'comissao',
+        equipe: typeof team?.name === 'string' ? team.name : undefined,
       })
 
       toast({ title: 'Sucesso', description: 'Comissão salva e sincronizada com sucesso!' })
@@ -231,9 +267,10 @@ export default function Commissions() {
       setGrossValueRaw('0')
       setParticipantNames({})
     } catch (e) {
+      console.error(e)
       toast({
         title: 'Erro',
-        description: 'Falha ao processar a comissão.',
+        description: 'Falha ao processar a comissão. Verifique os dados e tente novamente.',
         variant: 'destructive',
       })
     } finally {

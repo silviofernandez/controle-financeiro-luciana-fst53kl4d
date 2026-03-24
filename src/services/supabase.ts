@@ -4,7 +4,7 @@ const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 export interface CommissionPayload {
   description: string
   total_value: number
-  team_id: string
+  team_id: string | null
   broker_id: string | null
   capturer_id: string | null
   has_invoice: boolean
@@ -16,6 +16,9 @@ export interface CommissionPayload {
 export interface CommissionLinePayload {
   commission_id?: string
   role_name: string
+  participant_name: string | null
+  level: string | null
+  percentage: number | null
   value: number
   created_at: string
 }
@@ -44,6 +47,7 @@ export const saveCommission = async (
 
     if (!commRes.ok) {
       const err = await commRes.text()
+      console.error('Failed to save commission:', err)
       throw new Error(`Failed to save commission: ${err}`)
     }
 
@@ -64,6 +68,7 @@ export const saveCommission = async (
 
       if (!linesRes.ok) {
         const err = await linesRes.text()
+        console.error('Failed to save commission lines:', err)
         throw new Error(`Failed to save commission lines: ${err}`)
       }
     }

@@ -182,7 +182,9 @@ export function TransactionForm() {
 
       const vars: Record<string, string> = {}
       team.rules.forEach((r) => {
-        vars[r.id] = r.variations[0].id
+        if (r.variations && r.variations.length > 0) {
+          vars[r.id] = r.variations[0].id
+        }
       })
       setSelectedVariations(vars)
       setParticipantNames({})
@@ -308,6 +310,8 @@ export function TransactionForm() {
       team.rules.forEach((rule) => {
         const varId = selectedVariations[rule.id]
         const variation = rule.variations.find((v) => v.id === varId) || rule.variations[0]
+        if (!variation) return
+
         const name = participantNames[rule.id]
 
         let val = 0
@@ -321,7 +325,8 @@ export function TransactionForm() {
           d.push({
             id: rule.id,
             role: rule.role,
-            name: name && name !== 'nao_informado' ? name : undefined,
+            name:
+              name && name !== 'nao_informado' && !name.startsWith('sem-nome-') ? name : undefined,
             value: val,
           })
         }
@@ -456,8 +461,8 @@ export function TransactionForm() {
                     </SelectTrigger>
                     <SelectContent>
                       {teams.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
+                        <SelectItem key={t.id} value={t.id || `team-${Math.random()}`}>
+                          {t.name || 'Equipe sem nome'}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -487,11 +492,14 @@ export function TransactionForm() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="nao_informado">Não informado</SelectItem>
-                              {brokers.map((b) => (
-                                <SelectItem key={b.id} value={b.name}>
-                                  {b.name}
-                                </SelectItem>
-                              ))}
+                              {brokers.map((b) => {
+                                const safeName = b.name?.trim() ? b.name : `sem-nome-${b.id}`
+                                return (
+                                  <SelectItem key={b.id} value={safeName}>
+                                    {b.name?.trim() ? b.name : 'Colaborador sem nome'}
+                                  </SelectItem>
+                                )
+                              })}
                             </SelectContent>
                           </Select>
                         </div>
@@ -510,8 +518,8 @@ export function TransactionForm() {
                             </SelectTrigger>
                             <SelectContent>
                               {rule.variations.map((v) => (
-                                <SelectItem key={v.id} value={v.id}>
-                                  {v.name} ({v.value}
+                                <SelectItem key={v.id} value={v.id || `var-${Math.random()}`}>
+                                  {v.name || 'Sem nome'} ({v.value}
                                   {v.type === 'percentage' ? '%' : ' R$'})
                                 </SelectItem>
                               ))}
@@ -588,7 +596,9 @@ export function TransactionForm() {
                         className="cursor-pointer px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
                         onMouseDown={(e) => {
                           e.preventDefault()
-                          setDescricao(s)
+                          if (typeof s === 'string') {
+                            setDescricao(s)
+                          }
                           setShowSuggestions(false)
                         }}
                       >
@@ -635,11 +645,13 @@ export function TransactionForm() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
+                    {CATEGORIES.filter((c) => c && typeof c === 'string' && c.trim() !== '').map(
+                      (c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -650,11 +662,13 @@ export function TransactionForm() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {BANCOS.map((b) => (
-                      <SelectItem key={b} value={b}>
-                        {b}
-                      </SelectItem>
-                    ))}
+                    {BANCOS.filter((b) => b && typeof b === 'string' && b.trim() !== '').map(
+                      (b) => (
+                        <SelectItem key={b} value={b}>
+                          {b}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -699,11 +713,13 @@ export function TransactionForm() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {UNIDADES.map((u) => (
-                        <SelectItem key={u} value={u}>
-                          {u === 'Jau' ? 'Jaú' : u === 'L. Paulista' ? 'Lençóis' : u}
-                        </SelectItem>
-                      ))}
+                      {UNIDADES.filter((u) => u && typeof u === 'string' && u.trim() !== '').map(
+                        (u) => (
+                          <SelectItem key={u} value={u}>
+                            {u === 'Jau' ? 'Jaú' : u === 'L. Paulista' ? 'Lençóis' : u}
+                          </SelectItem>
+                        ),
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

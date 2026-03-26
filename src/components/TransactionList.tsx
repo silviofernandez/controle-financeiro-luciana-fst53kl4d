@@ -50,7 +50,7 @@ export function TransactionList() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas Unidades</SelectItem>
-                {UNIDADES.map((u) => (
+                {UNIDADES.filter((u) => u && typeof u === 'string' && u.trim() !== '').map((u) => (
                   <SelectItem key={u} value={u}>
                     {u}
                   </SelectItem>
@@ -64,7 +64,7 @@ export function TransactionList() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os Bancos</SelectItem>
-                {BANCOS.map((b) => (
+                {BANCOS.filter((b) => b && typeof b === 'string' && b.trim() !== '').map((b) => (
                   <SelectItem key={b} value={b}>
                     {b}
                   </SelectItem>

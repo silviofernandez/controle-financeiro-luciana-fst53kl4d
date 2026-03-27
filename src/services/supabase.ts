@@ -1,6 +1,8 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+const isMockEnv = !SUPABASE_URL || !SUPABASE_KEY || SUPABASE_URL.includes('mock-project')
+
 export interface CommissionPayload {
   description: string
   total_value: number
@@ -24,7 +26,7 @@ export interface CommissionLinePayload {
 }
 
 export const verifyRecordId = async (table: string, id: string): Promise<boolean> => {
-  if (!SUPABASE_URL || !SUPABASE_KEY || !id) return false
+  if (isMockEnv || !id) return false
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}&select=id`, {
       method: 'GET',
@@ -45,8 +47,11 @@ export const saveCommission = async (
   commission: CommissionPayload,
   lines: CommissionLinePayload[],
 ) => {
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    console.warn('Supabase credentials not found. Simulating save...', { commission, lines })
+  if (isMockEnv) {
+    console.warn('Supabase credentials not found or mocked. Simulating save...', {
+      commission,
+      lines,
+    })
     await new Promise((resolve) => setTimeout(resolve, 1000))
     return { id: crypto.randomUUID() }
   }

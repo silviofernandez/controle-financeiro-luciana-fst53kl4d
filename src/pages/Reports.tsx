@@ -22,6 +22,7 @@ import { formatCurrency } from '@/lib/utils'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ArrowDownUp, TrendingUp, TrendingDown, Activity, Wallet } from 'lucide-react'
+import { ReconciliationAlert } from '@/components/ReconciliationAlert'
 
 export default function Reports() {
   const { transactions } = useTransactions()
@@ -72,6 +73,7 @@ export default function Reports() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up pb-10">
+      <ReconciliationAlert />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-primary">Relatórios e Histórico</h2>

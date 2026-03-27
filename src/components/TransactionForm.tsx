@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useMemo, FormEvent, ChangeEvent } from 're
 import { useTransactions } from '@/contexts/TransactionContext'
 import { useBrokers } from '@/contexts/BrokerContext'
 import { useCommissions } from '@/contexts/CommissionContext'
+import { useSettings } from '@/contexts/SettingsContext'
 import {
   UNIDADES,
   BANCOS,
-  CATEGORIES,
   Unidade,
   Banco,
   ClassificacaoDespesa,
@@ -51,6 +51,7 @@ export function TransactionForm() {
   const { addTransaction, transactions } = useTransactions()
   const { brokers } = useBrokers()
   const { teams } = useCommissions()
+  const { categories, applyRules } = useSettings()
 
   const [tipo, setTipo] = useState<'receita' | 'despesa'>('despesa')
   const [classificacao, setClassificacao] = useState<ClassificacaoDespesa>('variavel')
@@ -127,12 +128,21 @@ export function TransactionForm() {
   useEffect(() => {
     if (typeof descricao !== 'string') return
     const desc = descricao.toLowerCase()
+
+    let foundBanco = false
     for (const [key, b] of Object.entries(BANCO_MAP)) {
       if (desc.includes(key)) {
         setBanco(b)
+        foundBanco = true
         break
       }
     }
+
+    const autoTags = applyRules(descricao)
+    if (autoTags.categoria) setCategoria(autoTags.categoria)
+    if (autoTags.unidade) setUnidade(autoTags.unidade as Unidade)
+    if (autoTags.banco) setBanco(autoTags.banco as Banco)
+
     setIsCheckpoint(desc.includes('saldo financeiro'))
 
     if (tipo === 'despesa') {
@@ -155,7 +165,7 @@ export function TransactionForm() {
         setClassificacao('fixo')
       }
     }
-  }, [descricao, tipo])
+  }, [descricao, tipo, applyRules])
 
   useEffect(() => {
     if (tipo === 'despesa' && !isCheckpoint) {
@@ -645,13 +655,13 @@ export function TransactionForm() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.filter((c) => c && typeof c === 'string' && c.trim() !== '').map(
-                      (c) => (
+                    {categories
+                      .filter((c) => c && typeof c === 'string' && c.trim() !== '')
+                      .map((c) => (
                         <SelectItem key={c} value={c}>
                           {c}
                         </SelectItem>
-                      ),
-                    )}
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -5,6 +5,7 @@ import { Textarea } from './ui/textarea'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { useTransactions } from '@/contexts/TransactionContext'
+import { useSettings } from '@/contexts/SettingsContext'
 import { toast } from '@/hooks/use-toast'
 import { Banco, Unidade, Transaction } from '@/types'
 import { UploadCloud, Link as LinkIcon, FileText, CheckCircle2 } from 'lucide-react'
@@ -30,6 +31,7 @@ const parseValue = (valStr: string) => {
 
 export function DataImporter() {
   const { transactions, addTransactions } = useTransactions()
+  const { applyRules } = useSettings()
   const [rawText, setRawText] = useState('')
   const [sheetLink, setSheetLink] = useState('')
   const [isDragging, setIsDragging] = useState(false)
@@ -84,16 +86,17 @@ export function DataImporter() {
         const valor = parseValue(valorStr)
 
         if (valor > 0 && desc) {
+          const autoTags = applyRules(desc)
           const isBalance = desc.toLowerCase().includes('saldo financeiro')
           parsed.push({
             descricao: desc,
             valor,
             data: `2026-${dateMatch[2]}-${dateMatch[1]}T10:00:00.000Z`,
-            unidade,
-            banco: guessBank(desc),
+            unidade: (autoTags.unidade as Unidade) || unidade,
+            banco: (autoTags.banco as Banco) || guessBank(desc),
             tipo: isBalance ? 'receita' : 'despesa',
             isCheckpoint: isBalance,
-            categoria: 'Outros',
+            categoria: autoTags.categoria || 'Outros',
           })
         }
       } else if (line.includes('|')) {
@@ -102,16 +105,18 @@ export function DataImporter() {
           const [dStr, uStr, vStr, descStr] = cols
           const dateMatch = dStr.match(/(\d{2})\/(\d{2})/)
           if (dateMatch) {
-            const isBalance = descStr.trim().toLowerCase().includes('saldo financeiro')
+            const cleanDesc = descStr.trim()
+            const autoTags = applyRules(cleanDesc)
+            const isBalance = cleanDesc.toLowerCase().includes('saldo financeiro')
             parsed.push({
-              descricao: descStr.trim(),
+              descricao: cleanDesc,
               valor: parseFloat(vStr.replace(',', '.')) || 0,
               data: `2026-${dateMatch[2]}-${dateMatch[1]}T10:00:00.000Z`,
-              unidade: uStr.trim() as Unidade,
-              banco: guessBank(descStr),
+              unidade: (autoTags.unidade as Unidade) || (uStr.trim() as Unidade),
+              banco: (autoTags.banco as Banco) || guessBank(cleanDesc),
               tipo: isBalance ? 'receita' : 'despesa',
               isCheckpoint: isBalance,
-              categoria: 'Outros',
+              categoria: autoTags.categoria || 'Outros',
             })
           }
         }
@@ -146,6 +151,15 @@ export function DataImporter() {
 
     addTransactions(toAdd)
     setRawText('')
+
+    const hasCheckpoint = toAdd.some((t) => t.isCheckpoint)
+    if (hasCheckpoint) {
+      toast({
+        title: 'Validação de Saldo',
+        description:
+          'Importação concluída. Verifique os alertas de reconciliação de saldo no painel principal.',
+      })
+    }
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useTransactions } from '@/contexts/TransactionContext'
-import { format } from 'date-fns'
+import { format, isSameMonth, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Trash2, Search, X, CalendarIcon } from 'lucide-react'
+import { Trash2, Search, X, CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table'
 import { Badge } from './ui/badge'
@@ -14,34 +14,22 @@ import { UNIDADES, BANCOS } from '@/types'
 
 export function TransactionList() {
   const { transactions, deleteTransaction } = useTransactions()
-  const [filterMonth, setFilterMonth] = useState<string>('all')
+  const [selectedMonth, setSelectedMonth] = useState<Date>(
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+  )
   const [filterUnidade, setFilterUnidade] = useState<string>('all')
   const [filterBanco, setFilterBanco] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
 
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>()
-    transactions.forEach((t) => {
-      if (t.data) {
-        try {
-          const date = new Date(t.data)
-          if (!isNaN(date.getTime())) {
-            months.add(format(date, 'yyyy-MM'))
-          }
-        } catch (e) {
-          // ignore invalid date formats
-        }
-      }
-    })
-    return Array.from(months).sort().reverse()
-  }, [transactions])
-
-  const formatMonthYear = (yyyyMM: string) => {
-    const [year, month] = yyyMM.split('-')
-    const date = new Date(parseInt(year), parseInt(month) - 1, 1)
-    const formatted = format(date, 'MMMM yyyy', { locale: ptBR })
-    return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+  const handlePrevMonth = () => {
+    setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
   }
+
+  const handleNextMonth = () => {
+    setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
+  }
+
+  const formattedMonthTitle = format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR })
 
   const filteredTransactions = transactions.filter((t) => {
     const matchesUnidade = filterUnidade === 'all' || t.unidade === filterUnidade
@@ -51,11 +39,13 @@ export function TransactionList() {
       (typeof t.descricao === 'string' &&
         t.descricao.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    let matchesMonth = true
-    if (filterMonth !== 'all' && t.data) {
+    let matchesMonth = false
+    if (t.data) {
       try {
-        const tMonth = format(new Date(t.data), 'yyyy-MM')
-        matchesMonth = tMonth === filterMonth
+        const tDate = typeof t.data === 'string' ? parseISO(t.data) : new Date(t.data)
+        if (!isNaN(tDate.getTime())) {
+          matchesMonth = isSameMonth(tDate, selectedMonth)
+        }
       } catch (e) {
         matchesMonth = false
       }
@@ -79,7 +69,7 @@ export function TransactionList() {
   const formatDateSafe = (dateString: string | undefined | null) => {
     try {
       if (!dateString || typeof dateString !== 'string') return '-'
-      const date = new Date(dateString)
+      const date = parseISO(dateString)
       if (isNaN(date.getTime())) return '-'
       return format(date, 'dd/MM/yy', { locale: ptBR })
     } catch {
@@ -94,14 +84,12 @@ export function TransactionList() {
           <div className="flex flex-col gap-2">
             <CardTitle className="text-lg flex items-center gap-2">
               Extrato Detalhado
-              {filterMonth !== 'all' && (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] bg-white border-blue-200 text-blue-700 font-medium ml-2"
-                >
-                  {formatMonthYear(filterMonth)}
-                </Badge>
-              )}
+              <Badge
+                variant="outline"
+                className="text-[10px] bg-white border-blue-200 text-blue-700 font-medium ml-2 capitalize"
+              >
+                {formattedMonthTitle}
+              </Badge>
             </CardTitle>
             <div className="flex items-center gap-3 bg-white/60 px-3 py-1.5 rounded-md border border-blue-100/50 w-fit">
               <span className="text-xs text-muted-foreground font-medium mr-1">Resumo:</span>
@@ -121,21 +109,31 @@ export function TransactionList() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 w-full xl:w-auto overflow-x-auto pb-1 xl:pb-0">
-            <Select value={filterMonth} onValueChange={setFilterMonth}>
-              <SelectTrigger className="w-[150px] h-8 bg-white text-xs font-medium border-blue-200 hover:bg-blue-50/50 transition-colors">
-                <CalendarIcon className="w-3.5 h-3.5 mr-2 text-blue-600" />
-                <SelectValue placeholder="Mês" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Meses</SelectItem>
-                {availableMonths.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {formatMonthYear(m)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap gap-2 w-full xl:w-auto overflow-x-auto pb-1 xl:pb-0 items-center">
+            <div className="flex items-center bg-white border border-blue-200 rounded-md h-8 overflow-hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-full w-8 rounded-none hover:bg-blue-50/50 text-blue-600"
+                onClick={handlePrevMonth}
+                title="Mês Anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center justify-center px-3 min-w-[140px] text-xs font-medium text-blue-900 capitalize border-x border-blue-100/50 h-full bg-blue-50/30">
+                <CalendarIcon className="w-3.5 h-3.5 mr-1.5 text-blue-500" />
+                {formattedMonthTitle}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-full w-8 rounded-none hover:bg-blue-50/50 text-blue-600"
+                onClick={handleNextMonth}
+                title="Próximo Mês"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
 
             <Select value={filterUnidade} onValueChange={setFilterUnidade}>
               <SelectTrigger className="w-[130px] h-8 bg-white text-xs">

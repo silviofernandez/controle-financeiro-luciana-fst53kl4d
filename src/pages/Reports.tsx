@@ -23,11 +23,33 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ArrowDownUp, TrendingUp, TrendingDown, Activity, Wallet } from 'lucide-react'
 import { ReconciliationAlert } from '@/components/ReconciliationAlert'
+import { cn } from '@/lib/utils'
 
 export default function Reports() {
   const { transactions } = useTransactions()
   const [unit, setUnit] = useState<string>('all')
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc')
+  const [highlightDate, setHighlightDate] = useState<string | null>(null)
+
+  const handleAdjustDivergence = (date: string) => {
+    setHighlightDate(date)
+    setSortOrder('desc')
+    setUnit('all')
+
+    setTimeout(() => {
+      const tableEl = document.getElementById('transactions-table')
+      if (tableEl) {
+        tableEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+
+      setTimeout(() => {
+        const firstHighlighted = document.querySelector('.highlighted-row')
+        if (firstHighlighted) {
+          firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 300)
+    }, 100)
+  }
 
   const filteredTransactions = useMemo(() => {
     let filtered = transactions.filter((t) => !t.isCheckpoint)
@@ -73,7 +95,7 @@ export default function Reports() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up pb-10">
-      <ReconciliationAlert />
+      <ReconciliationAlert onAdjust={handleAdjustDivergence} />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-primary">Relatórios e Histórico</h2>
@@ -160,12 +182,12 @@ export default function Reports() {
         </Card>
       </div>
 
-      <Card className="shadow-sm border-slate-200 overflow-hidden">
+      <Card id="transactions-table" className="shadow-sm border-slate-200 overflow-hidden">
         <CardHeader className="bg-slate-50/50 pb-4 border-b border-slate-100">
           <CardTitle className="text-lg text-slate-800">Lista Detalhada de Transações</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[600px] overflow-y-auto relative scroll-smooth">
             <Table>
               <TableHeader className="bg-white">
                 <TableRow>
@@ -177,34 +199,58 @@ export default function Reports() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTransactions.map((t) => (
-                  <TableRow key={t.id} className="hover:bg-slate-50/50 transition-colors">
-                    <TableCell className="text-sm text-slate-600">
-                      {format(new Date(t.data), 'dd/MM/yyyy', { locale: ptBR })}
-                    </TableCell>
-                    <TableCell className="font-medium text-slate-800">{t.descricao}</TableCell>
-                    <TableCell className="text-slate-600">{t.categoria || '-'}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={t.tipo === 'receita' ? 'default' : 'destructive'}
-                        className={
-                          t.tipo === 'receita'
-                            ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-none'
-                            : 'bg-red-100 text-red-800 hover:bg-red-200 border-none'
-                        }
-                      >
-                        {t.tipo === 'receita' ? 'Receita' : 'Despesa'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell
-                      className={`text-right font-mono font-medium ${
-                        t.tipo === 'receita' ? 'text-emerald-600' : 'text-red-600'
-                      }`}
+                {filteredTransactions.map((t) => {
+                  const isHighlighted =
+                    highlightDate &&
+                    (() => {
+                      try {
+                        return (
+                          new Date(t.data).toISOString().split('T')[0] ===
+                          new Date(highlightDate).toISOString().split('T')[0]
+                        )
+                      } catch {
+                        return false
+                      }
+                    })()
+
+                  return (
+                    <TableRow
+                      key={t.id}
+                      className={cn(
+                        'transition-all duration-500',
+                        isHighlighted
+                          ? 'bg-red-50/80 hover:bg-red-100/90 border-l-4 border-l-red-500 highlighted-row'
+                          : 'hover:bg-slate-50/50 border-l-4 border-l-transparent',
+                      )}
                     >
-                      {formatCurrency(t.valor)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      <TableCell className="text-sm text-slate-600">
+                        {format(new Date(t.data), 'dd/MM/yyyy', { locale: ptBR })}
+                      </TableCell>
+                      <TableCell className="font-medium text-slate-800">{t.descricao}</TableCell>
+                      <TableCell className="text-slate-600">{t.categoria || '-'}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={t.tipo === 'receita' ? 'default' : 'destructive'}
+                          className={
+                            t.tipo === 'receita'
+                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-none'
+                              : 'bg-red-100 text-red-800 hover:bg-red-200 border-none'
+                          }
+                        >
+                          {t.tipo === 'receita' ? 'Receita' : 'Despesa'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          'text-right font-mono font-medium',
+                          t.tipo === 'receita' ? 'text-emerald-600' : 'text-red-600',
+                        )}
+                      >
+                        {formatCurrency(t.valor)}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
                 {filteredTransactions.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">

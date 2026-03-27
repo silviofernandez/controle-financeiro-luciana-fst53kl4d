@@ -1,11 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useTransactions } from '@/contexts/TransactionContext'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
-export function ReconciliationAlert() {
+interface ReconciliationAlertProps {
+  onAdjust?: (date: string) => void
+}
+
+export function ReconciliationAlert({ onAdjust }: ReconciliationAlertProps = {}) {
   const { transactions } = useTransactions()
+  const [isDismissed, setIsDismissed] = useState(false)
 
   const discrepancy = useMemo(() => {
     const checkpoints = transactions.filter((t) => t.isCheckpoint)
@@ -34,6 +40,19 @@ export function ReconciliationAlert() {
     return { difference, expectedBalance, reportedBalance, date: latestCheckpoint.data }
   }, [transactions])
 
+  const prevDifference = useRef(discrepancy?.difference)
+
+  useEffect(() => {
+    if (
+      discrepancy &&
+      prevDifference.current !== undefined &&
+      Math.abs(discrepancy.difference - prevDifference.current) > 0.01
+    ) {
+      setIsDismissed(false)
+    }
+    prevDifference.current = discrepancy?.difference
+  }, [discrepancy?.difference])
+
   if (!discrepancy) return null
 
   if (Math.abs(discrepancy.difference) < 0.01) {
@@ -51,18 +70,45 @@ export function ReconciliationAlert() {
     )
   }
 
+  if (isDismissed) return null
+
   return (
-    <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800 mb-6 shadow-sm">
-      <AlertTriangle className="h-4 w-4 text-red-600" />
-      <AlertTitle className="text-red-800 font-semibold">
-        Divergência de Saldo Encontrada
-      </AlertTitle>
-      <AlertDescription className="text-red-700 mt-1">
-        Foi encontrada uma divergência de{' '}
-        <strong>{formatCurrency(Math.abs(discrepancy.difference))}</strong>. O saldo calculado é{' '}
-        {formatCurrency(discrepancy.expectedBalance)}, mas o último saldo informado foi{' '}
-        {formatCurrency(discrepancy.reportedBalance)}.
-      </AlertDescription>
+    <Alert
+      variant="destructive"
+      className="bg-red-50 border-red-200 text-red-800 mb-6 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center transition-all duration-300"
+    >
+      <div className="flex gap-3 items-start">
+        <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+        <div>
+          <AlertTitle className="text-red-800 font-semibold text-base">
+            Divergência de Saldo Encontrada
+          </AlertTitle>
+          <AlertDescription className="text-red-700 mt-1 text-sm leading-relaxed">
+            Foi encontrada uma divergência de{' '}
+            <strong>{formatCurrency(Math.abs(discrepancy.difference))}</strong>. O saldo calculado é{' '}
+            {formatCurrency(discrepancy.expectedBalance)}, mas o último saldo informado foi{' '}
+            {formatCurrency(discrepancy.reportedBalance)}.
+          </AlertDescription>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto mt-2 sm:mt-0 ml-8 sm:ml-0">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsDismissed(true)}
+          className="bg-transparent border-red-300 text-red-700 hover:bg-red-100 hover:text-red-800 w-full sm:w-auto"
+        >
+          Desconsiderar
+        </Button>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => onAdjust?.(discrepancy.date)}
+          className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto shadow-sm"
+        >
+          Ajustar Divergência
+        </Button>
+      </div>
     </Alert>
   )
 }

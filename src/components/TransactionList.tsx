@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTransactions } from '@/contexts/TransactionContext'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Trash2, Search, X } from 'lucide-react'
+import { Trash2, Search, X, CalendarIcon } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table'
 import { Badge } from './ui/badge'
@@ -14,18 +14,65 @@ import { UNIDADES, BANCOS } from '@/types'
 
 export function TransactionList() {
   const { transactions, deleteTransaction } = useTransactions()
+  const [filterMonth, setFilterMonth] = useState<string>('all')
   const [filterUnidade, setFilterUnidade] = useState<string>('all')
   const [filterBanco, setFilterBanco] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
 
-  const filteredTransactions = transactions.filter(
-    (t) =>
-      (filterUnidade === 'all' || t.unidade === filterUnidade) &&
-      (filterBanco === 'all' || t.banco === filterBanco) &&
-      (!searchTerm ||
-        (typeof t.descricao === 'string' &&
-          t.descricao.toLowerCase().includes(searchTerm.toLowerCase()))),
-  )
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>()
+    transactions.forEach((t) => {
+      if (t.data) {
+        try {
+          const date = new Date(t.data)
+          if (!isNaN(date.getTime())) {
+            months.add(format(date, 'yyyy-MM'))
+          }
+        } catch (e) {}
+      }
+    })
+    return Array.from(months).sort().reverse()
+  }, [transactions])
+
+  const formatMonthYear = (yyyyMM: string) => {
+    const [year, month] = yyyMM.split('-')
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1)
+    const formatted = format(date, 'MMMM yyyy', { locale: ptBR })
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+  }
+
+  const filteredTransactions = transactions.filter((t) => {
+    const matchesUnidade = filterUnidade === 'all' || t.unidade === filterUnidade
+    const matchesBanco = filterBanco === 'all' || t.banco === filterBanco
+    const matchesSearch =
+      !searchTerm ||
+      (typeof t.descricao === 'string' &&
+        t.descricao.toLowerCase().includes(searchTerm.toLowerCase()))
+
+    let matchesMonth = true
+    if (filterMonth !== 'all' && t.data) {
+      try {
+        const tMonth = format(new Date(t.data), 'yyyy-MM')
+        matchesMonth = tMonth === filterMonth
+      } catch (e) {
+        matchesMonth = false
+      }
+    }
+
+    return matchesUnidade && matchesBanco && matchesSearch && matchesMonth
+  })
+
+  const totals = useMemo(() => {
+    let receitas = 0
+    let despesas = 0
+    filteredTransactions.forEach((t) => {
+      if (!t.isCheckpoint) {
+        if (t.tipo === 'receita') receitas += Number(t.valor) || 0
+        if (t.tipo === 'despesa') despesas += Number(t.valor) || 0
+      }
+    })
+    return { receitas, despesas, saldo: receitas - despesas }
+  }, [filteredTransactions])
 
   const formatDateSafe = (dateString: string | undefined | null) => {
     try {
@@ -39,13 +86,57 @@ export function TransactionList() {
   }
 
   return (
-    <Card className="shadow-md border-blue-100/50 flex-1 flex flex-col h-full overflow-hidden">
+    <Card className="shadow-md border-blue-100/50 flex-1 flex flex-col h-full overflow-hidden animate-fade-in">
       <CardHeader className="bg-gradient-to-r from-white to-blue-50/80 pb-4 rounded-t-lg flex flex-col gap-4 shrink-0">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
-          <CardTitle className="text-lg">Lançamentos Detalhados</CardTitle>
-          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+        <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 w-full">
+          <div className="flex flex-col gap-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              Extrato Detalhado
+              {filterMonth !== 'all' && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] bg-white border-blue-200 text-blue-700 font-medium ml-2"
+                >
+                  {formatMonthYear(filterMonth)}
+                </Badge>
+              )}
+            </CardTitle>
+            <div className="flex items-center gap-3 bg-white/60 px-3 py-1.5 rounded-md border border-blue-100/50 w-fit">
+              <span className="text-xs text-muted-foreground font-medium mr-1">Resumo:</span>
+              <span className="text-xs text-green-600 font-semibold" title="Total Receitas">
+                + {formatCurrency(totals.receitas)}
+              </span>
+              <span className="text-xs text-red-500 font-semibold" title="Total Despesas">
+                - {formatCurrency(totals.despesas)}
+              </span>
+              <div className="w-px h-3 bg-slate-200 mx-1"></div>
+              <span
+                className={`text-xs font-bold ${totals.saldo >= 0 ? 'text-emerald-600' : 'text-red-600'}`}
+                title="Saldo do Período"
+              >
+                {formatCurrency(totals.saldo)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 w-full xl:w-auto overflow-x-auto pb-1 xl:pb-0">
+            <Select value={filterMonth} onValueChange={setFilterMonth}>
+              <SelectTrigger className="w-[150px] h-8 bg-white text-xs font-medium border-blue-200 hover:bg-blue-50/50 transition-colors">
+                <CalendarIcon className="w-3.5 h-3.5 mr-2 text-blue-600" />
+                <SelectValue placeholder="Mês" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Meses</SelectItem>
+                {availableMonths.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {formatMonthYear(m)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Select value={filterUnidade} onValueChange={setFilterUnidade}>
-              <SelectTrigger className="w-[140px] h-8 bg-white text-xs">
+              <SelectTrigger className="w-[130px] h-8 bg-white text-xs">
                 <SelectValue placeholder="Unidade" />
               </SelectTrigger>
               <SelectContent>
@@ -59,7 +150,7 @@ export function TransactionList() {
             </Select>
 
             <Select value={filterBanco} onValueChange={setFilterBanco}>
-              <SelectTrigger className="w-[140px] h-8 bg-white text-xs">
+              <SelectTrigger className="w-[130px] h-8 bg-white text-xs">
                 <SelectValue placeholder="Banco" />
               </SelectTrigger>
               <SelectContent>
@@ -77,8 +168,8 @@ export function TransactionList() {
         <div className="relative w-full sm:max-w-md">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Procurar despesas (ex: integrale)..."
-            className="pl-9 pr-9 bg-white h-9 text-sm"
+            placeholder="Procurar despesas ou receitas..."
+            className="pl-9 pr-9 bg-white h-9 text-sm border-blue-100 focus-visible:ring-blue-200"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -94,22 +185,39 @@ export function TransactionList() {
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
+
+      <CardContent className="p-0 flex-1 flex flex-col overflow-hidden bg-white/50">
         {filteredTransactions.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground flex flex-col items-center justify-center flex-1">
-            <p className="font-medium">Nenhum lançamento encontrado com os filtros atuais.</p>
+          <div className="p-12 text-center text-muted-foreground flex flex-col items-center justify-center flex-1 animate-in fade-in duration-300">
+            <CalendarIcon className="w-12 h-12 mb-4 text-slate-200" />
+            <p className="font-medium text-slate-600">
+              Nenhum lançamento encontrado para este período.
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Tente ajustar os filtros ou selecionar outro mês.
+            </p>
           </div>
         ) : (
           <div className="overflow-auto flex-1 h-full">
             <Table className="w-full relative">
               <TableHeader className="bg-slate-50/90 sticky top-0 z-10 shadow-sm backdrop-blur-sm">
                 <TableRow>
-                  <TableHead className="w-[80px] whitespace-nowrap">Data</TableHead>
-                  <TableHead className="min-w-[180px]">Histórico</TableHead>
-                  <TableHead className="hidden md:table-cell">Unidade</TableHead>
-                  <TableHead className="hidden lg:table-cell">Status/Banco</TableHead>
-                  <TableHead className="hidden md:table-cell text-center">Tipo</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Valor</TableHead>
+                  <TableHead className="w-[80px] whitespace-nowrap text-xs font-semibold">
+                    Data
+                  </TableHead>
+                  <TableHead className="min-w-[180px] text-xs font-semibold">Histórico</TableHead>
+                  <TableHead className="hidden md:table-cell text-xs font-semibold">
+                    Unidade
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell text-xs font-semibold">
+                    Status/Banco
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell text-center text-xs font-semibold">
+                    Tipo
+                  </TableHead>
+                  <TableHead className="text-right whitespace-nowrap text-xs font-semibold">
+                    Valor
+                  </TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -117,18 +225,18 @@ export function TransactionList() {
                 {filteredTransactions.map((t) => (
                   <TableRow
                     key={t.id}
-                    className={`group transition-colors hover:bg-slate-50/50 ${
+                    className={`group transition-colors hover:bg-slate-50/80 ${
                       t.isCheckpoint
                         ? 'bg-emerald-50/40 border-l-4 border-l-emerald-500 hover:bg-emerald-50/60'
-                        : ''
+                        : 'border-l-4 border-l-transparent hover:border-l-blue-200'
                     }`}
                   >
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                    <TableCell className="text-xs text-slate-500 whitespace-nowrap font-medium">
                       {formatDateSafe(t.data)}
                     </TableCell>
                     <TableCell>
                       <span
-                        className={`font-medium block ${t.isCheckpoint ? 'text-emerald-800 italic' : ''}`}
+                        className={`text-sm block ${t.isCheckpoint ? 'text-emerald-800 italic font-medium' : 'text-slate-700'}`}
                       >
                         {typeof t.descricao === 'string' ? t.descricao : 'Sem descrição'}
                       </span>
@@ -142,23 +250,15 @@ export function TransactionList() {
                         >
                           {t.banco}
                         </Badge>
-                        {t.tipo === 'despesa' && t.classificacao && (
-                          <Badge
-                            variant="outline"
-                            className={`text-[9px] px-1.5 py-0 h-4 ${t.classificacao === 'fixo' ? 'text-indigo-600 border-indigo-200 bg-indigo-50/50' : 'text-amber-600 border-amber-200 bg-amber-50/50'}`}
-                          >
-                            {t.classificacao === 'fixo' ? 'Fixo' : 'Var'}
-                          </Badge>
-                        )}
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <span className="text-sm">{t.unidade}</span>
+                      <span className="text-xs text-slate-600 font-medium">{t.unidade}</span>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       <Badge
                         variant="secondary"
-                        className="font-normal text-[10px] bg-slate-100/80 text-slate-600"
+                        className="font-normal text-[10px] bg-slate-100 text-slate-600"
                       >
                         {t.banco}
                       </Badge>
@@ -167,14 +267,14 @@ export function TransactionList() {
                       {t.tipo === 'despesa' && t.classificacao && !t.isCheckpoint && (
                         <Badge
                           variant="outline"
-                          className={`font-normal text-[10px] ${t.classificacao === 'fixo' ? 'text-indigo-600 border-indigo-200 bg-indigo-50/50' : 'text-amber-600 border-amber-200 bg-amber-50/50'}`}
+                          className={`font-medium text-[9px] uppercase tracking-wider ${t.classificacao === 'fixo' ? 'text-indigo-600 border-indigo-200 bg-indigo-50/50' : 'text-amber-600 border-amber-200 bg-amber-50/50'}`}
                         >
                           {t.classificacao === 'fixo' ? 'Fixo' : 'Variável'}
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell
-                      className={`text-right font-medium font-mono whitespace-nowrap ${
+                      className={`text-right font-medium whitespace-nowrap ${
                         t.isCheckpoint
                           ? 'text-emerald-700'
                           : t.tipo === 'receita'
@@ -189,7 +289,7 @@ export function TransactionList() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:bg-destructive/10"
+                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-destructive hover:bg-destructive/10"
                         onClick={() => deleteTransaction(t.id)}
                       >
                         <Trash2 className="h-4 w-4" />

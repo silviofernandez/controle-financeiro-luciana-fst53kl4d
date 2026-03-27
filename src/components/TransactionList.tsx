@@ -28,7 +28,9 @@ export function TransactionList() {
           if (!isNaN(date.getTime())) {
             months.add(format(date, 'yyyy-MM'))
           }
-        } catch (e) {}
+        } catch (e) {
+          // ignore invalid date formats
+        }
       }
     })
     return Array.from(months).sort().reverse()

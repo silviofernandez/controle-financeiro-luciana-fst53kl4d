@@ -8,6 +8,7 @@ import { Save, LogOut } from 'lucide-react'
 import { CommissionSettings } from '@/components/CommissionSettings'
 import { BrokerSettings } from '@/components/BrokerSettings'
 import { TeamCommissionManager } from '@/components/TeamCommissionManager'
+import { DataImporter } from '@/components/DataImporter'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function Settings() {
@@ -33,20 +34,42 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="geral" className="w-full">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4 max-w-4xl mb-6 h-auto sm:h-10">
-          <TabsTrigger value="geral" className="py-2 sm:py-1.5 text-xs sm:text-sm">
+        <TabsList className="flex flex-wrap w-full mb-6 h-auto sm:h-10 max-w-5xl bg-muted p-1 rounded-md">
+          <TabsTrigger
+            value="geral"
+            className="flex-1 py-2 sm:py-1.5 text-xs sm:text-sm whitespace-nowrap"
+          >
             Geral & Integrações
           </TabsTrigger>
-          <TabsTrigger value="equipes" className="py-2 sm:py-1.5 text-xs sm:text-sm">
-            Gerenciar Equipes de Comissão
+          <TabsTrigger
+            value="importacao"
+            className="flex-1 py-2 sm:py-1.5 text-xs sm:text-sm whitespace-nowrap"
+          >
+            Importar Dados
           </TabsTrigger>
-          <TabsTrigger value="comissoes" className="py-2 sm:py-1.5 text-xs sm:text-sm">
-            Regras de Comissão
+          <TabsTrigger
+            value="equipes"
+            className="flex-1 py-2 sm:py-1.5 text-xs sm:text-sm whitespace-nowrap"
+          >
+            Equipes
           </TabsTrigger>
-          <TabsTrigger value="corretores" className="py-2 sm:py-1.5 text-xs sm:text-sm">
-            Corretores / Colaboradores
+          <TabsTrigger
+            value="comissoes"
+            className="flex-1 py-2 sm:py-1.5 text-xs sm:text-sm whitespace-nowrap"
+          >
+            Regras
+          </TabsTrigger>
+          <TabsTrigger
+            value="corretores"
+            className="flex-1 py-2 sm:py-1.5 text-xs sm:text-sm whitespace-nowrap"
+          >
+            Corretores
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="importacao">
+          <DataImporter />
+        </TabsContent>
 
         <TabsContent value="geral">
           <form onSubmit={handleSave} className="space-y-6">

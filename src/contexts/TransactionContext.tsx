@@ -6,6 +6,7 @@ import { getMockData } from '@/data/mock'
 interface TransactionContextData {
   transactions: Transaction[]
   addTransaction: (t: Omit<Transaction, 'id' | 'created_at'>) => void
+  addTransactions: (ts: Omit<Transaction, 'id' | 'created_at'>[]) => void
   deleteTransaction: (id: string) => void
   isSyncing: boolean
   syncData: () => Promise<void>
@@ -40,6 +41,18 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     toast({ title: 'Sucesso!', description: 'Lançamento adicionado com sucesso.' })
   }
 
+  const addTransactions = (ts: Omit<Transaction, 'id' | 'created_at'>[]) => {
+    const newTxs: Transaction[] = ts.map((t) => ({
+      ...t,
+      id: crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+    }))
+    setTransactions((prev) =>
+      [...newTxs, ...prev].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()),
+    )
+    toast({ title: 'Sucesso!', description: `${ts.length} lançamentos adicionados com sucesso.` })
+  }
+
   const deleteTransaction = (id: string) => {
     setTransactions((prev) => prev.filter((t) => t.id !== id))
     toast({ title: 'Excluído', description: 'Item excluído com sucesso.' })
@@ -59,7 +72,14 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   return (
     <TransactionContext.Provider
-      value={{ transactions, addTransaction, deleteTransaction, isSyncing, syncData }}
+      value={{
+        transactions,
+        addTransaction,
+        addTransactions,
+        deleteTransaction,
+        isSyncing,
+        syncData,
+      }}
     >
       {children}
     </TransactionContext.Provider>

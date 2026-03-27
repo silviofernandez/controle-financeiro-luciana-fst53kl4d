@@ -71,7 +71,8 @@ const rawFebData = `02/02|Jau|1610|up talentos , recrutamento santander|despesa|
 07/02|Jau|488.7|up talentos boleto vaga apoio santander|despesa|variavel|
 07/02|Silvio|445.47|caicara clube janeiro santander|despesa|fixo|
 07/02|Jau|319.94|leovaldo preto 312,74 santander|despesa|variavel|
-07/02|Jau|250|doacao catedral n senhora santander|despesa|variavel|`
+07/02|Jau|250|doacao catedral n senhora santander|despesa|variavel|
+10/02|Silvio|2895.85|unimed corporativo santander|despesa|fixo|`
 
 const ciaData: Transaction[] = [
   {

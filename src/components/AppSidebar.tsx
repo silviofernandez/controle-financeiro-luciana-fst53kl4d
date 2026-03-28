@@ -21,7 +21,7 @@ import {
 
 const items = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-  { title: 'Inserir Dados', url: '/#inserir', icon: PlusCircle },
+  { title: 'Inserir Dados', url: '/inserir', icon: PlusCircle },
   { title: 'Resultado da Empresa', url: '/resultado-empresa', icon: TrendingUp },
   { title: 'Calculadora de Comissão', url: '/comissoes', icon: Calculator },
   { title: 'Margem de Contribuição', url: '/margem-contribuicao', icon: Activity },
@@ -43,11 +43,7 @@ export function AppSidebar() {
           <SidebarGroupContent className="mt-2">
             <SidebarMenu>
               {items.map((item) => {
-                const isActive =
-                  location.pathname === item.url ||
-                  (item.url === '/#inserir' &&
-                    location.pathname === '/' &&
-                    location.hash === '#inserir')
+                const isActive = location.pathname === item.url
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton

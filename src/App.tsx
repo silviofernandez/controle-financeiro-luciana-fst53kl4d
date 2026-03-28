@@ -11,6 +11,7 @@ import OperatingCosts from './pages/OperatingCosts'
 import CompanyResult from './pages/CompanyResult'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
+import InsertData from './pages/InsertData'
 
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -57,6 +58,7 @@ const AppRoutes = () => (
       }
     >
       <Route path="/" element={<Index />} />
+      <Route path="/inserir" element={<InsertData />} />
       <Route path="/resultado-empresa" element={<CompanyResult />} />
       <Route path="/relatorios" element={<Reports />} />
       <Route path="/margem-contribuicao" element={<ContributionMargin />} />

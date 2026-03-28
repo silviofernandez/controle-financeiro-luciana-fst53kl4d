@@ -18,279 +18,389 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { formatCurrency } from '@/lib/utils'
-import { format } from 'date-fns'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { formatCurrency, cn } from '@/lib/utils'
+import { format, parseISO, startOfDay, endOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import {
-  ArrowDownUp,
-  TrendingUp,
-  TrendingDown,
-  Activity,
-  Wallet,
-  MessageSquareText,
-} from 'lucide-react'
+import { TrendingUp, TrendingDown, Wallet, Download, Filter } from 'lucide-react'
+import { CATEGORIES, UNIDADES } from '@/types'
+import { toast } from '@/hooks/use-toast'
 import { ReconciliationAlert } from '@/components/ReconciliationAlert'
-import { cn } from '@/lib/utils'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export default function Reports() {
   const { transactions } = useTransactions()
+  const [activeTab, setActiveTab] = useState('geral')
+  const [startDate, setStartDate] = useState<string>('')
+  const [endDate, setEndDate] = useState<string>('')
   const [unit, setUnit] = useState<string>('all')
-  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc')
+  const [category, setCategory] = useState<string>('all')
   const [highlightDate, setHighlightDate] = useState<string | null>(null)
+
+  const handleExport = () => {
+    toast({
+      title: 'Exportando relatório',
+      description: 'O documento está sendo gerado com os filtros atuais.',
+    })
+    setTimeout(() => {
+      window.print()
+    }, 500)
+  }
 
   const handleAdjustDivergence = (date: string) => {
     setHighlightDate(date)
-    setSortOrder('desc')
+    setActiveTab('geral')
     setUnit('all')
+    setCategory('all')
+    setStartDate('')
+    setEndDate('')
 
     setTimeout(() => {
       const tableEl = document.getElementById('transactions-table')
       if (tableEl) {
         tableEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
-
-      setTimeout(() => {
-        const firstHighlighted = document.querySelector('.highlighted-row')
-        if (firstHighlighted) {
-          firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }
-      }, 300)
     }, 100)
   }
 
   const filteredTransactions = useMemo(() => {
     let filtered = transactions.filter((t) => !t.isCheckpoint)
 
+    // Tab Filter
+    if (activeTab === 'operacional') {
+      filtered = filtered.filter((t) => t.categoria !== 'Comissão' && t.categoria !== 'Comissões')
+    } else if (activeTab === 'comissoes') {
+      filtered = filtered.filter((t) => t.categoria === 'Comissão' || t.categoria === 'Comissões')
+    }
+
+    // Global Filters
     if (unit !== 'all') {
-      // Lençóis is mapped to 'L. Paulista' in the system
       const unitToMatch = unit === 'Lençóis' ? 'L. Paulista' : unit
       filtered = filtered.filter((t) => t.unidade === unitToMatch)
     }
 
-    return filtered.sort((a, b) => {
-      const dateA = new Date(a.data).getTime()
-      const dateB = new Date(b.data).getTime()
-      return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
-    })
-  }, [transactions, unit, sortOrder])
+    if (category !== 'all') {
+      filtered = filtered.filter((t) => t.categoria === category)
+    }
+
+    if (startDate) {
+      try {
+        const start = startOfDay(parseISO(startDate)).getTime()
+        filtered = filtered.filter((t) => {
+          const tTime = parseISO(t.data).getTime()
+          return !isNaN(tTime) && tTime >= start
+        })
+      } catch (e) {}
+    }
+
+    if (endDate) {
+      try {
+        const end = endOfDay(parseISO(endDate)).getTime()
+        filtered = filtered.filter((t) => {
+          const tTime = parseISO(t.data).getTime()
+          return !isNaN(tTime) && tTime <= end
+        })
+      } catch (e) {}
+    }
+
+    return filtered.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+  }, [transactions, activeTab, unit, category, startDate, endDate])
 
   const summary = useMemo(() => {
-    const faturamento = filteredTransactions
+    const entradas = filteredTransactions
       .filter((t) => t.tipo === 'receita')
-      .reduce((acc, t) => acc + t.valor, 0)
+      .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
 
-    const despesasGerais = filteredTransactions
+    const saidas = filteredTransactions
       .filter((t) => t.tipo === 'despesa')
-      .reduce((acc, t) => acc + t.valor, 0)
+      .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
 
-    const custosOperacionais = filteredTransactions
-      .filter(
-        (t) =>
-          t.tipo === 'despesa' &&
-          (t.classificacao === 'fixo' ||
-            t.classificacao === 'variavel' ||
-            t.categoria === 'Fornecedores' ||
-            t.categoria === 'Folha de Pagamento' ||
-            t.categoria === 'Outros'),
-      )
-      .reduce((acc, t) => acc + t.valor, 0)
+    const saldo = entradas - saidas
 
-    const saldoLiquido = faturamento - despesasGerais
-
-    return { faturamento, despesasGerais, custosOperacionais, saldoLiquido }
+    return { entradas, saidas, saldo }
   }, [filteredTransactions])
+
+  const getCategoryColor = (cat: string) => {
+    const colors: Record<string, string> = {
+      Alimentação: 'bg-orange-100 text-orange-800',
+      Transporte: 'bg-blue-100 text-blue-800',
+      Casa: 'bg-teal-100 text-teal-800',
+      Saúde: 'bg-red-100 text-red-800',
+      Lazer: 'bg-purple-100 text-purple-800',
+      Trabalho: 'bg-indigo-100 text-indigo-800',
+      Impostos: 'bg-rose-100 text-rose-800',
+      Fornecedores: 'bg-amber-100 text-amber-800',
+      'Folha de Pagamento': 'bg-cyan-100 text-cyan-800',
+      Comissão: 'bg-emerald-100 text-emerald-800',
+      Outros: 'bg-slate-100 text-slate-800',
+    }
+    return colors[cat] || 'bg-slate-100 text-slate-800'
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up pb-10">
       <ReconciliationAlert onAdjust={handleAdjustDivergence} />
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-primary">Relatórios e Histórico</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-primary">
+            Central de Relatórios Avançados
+          </h2>
           <p className="text-muted-foreground mt-1">
-            Acompanhe o histórico de transações e a performance financeira.
+            Analise o desempenho financeiro geral, operacional e de comissões.
           </p>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Select value={unit} onValueChange={setUnit}>
-            <SelectTrigger className="w-full sm:w-[200px] bg-white shadow-sm">
-              <SelectValue placeholder="Selecione a Unidade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Cia (Visão Geral)</SelectItem>
-              <SelectItem value="Jau">Jaú</SelectItem>
-              <SelectItem value="Pederneiras">Pederneiras</SelectItem>
-              <SelectItem value="Lençóis">Lençóis</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            onClick={() => setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
-            className="bg-white whitespace-nowrap shadow-sm"
-          >
-            <ArrowDownUp className="w-4 h-4 mr-2" />
-            Inverter Ordem
-          </Button>
-        </div>
+        <Button
+          onClick={handleExport}
+          className="whitespace-nowrap shadow-sm bg-primary hover:bg-primary/90 text-white"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Exportar Relatório
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-slate-600">Faturamento Geral</CardTitle>
-            <TrendingUp className="w-4 h-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">
-              {formatCurrency(summary.faturamento)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-slate-600">
-              Custos Operacionais
-            </CardTitle>
-            <Activity className="w-4 h-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600">
-              {formatCurrency(summary.custosOperacionais)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-slate-600">Despesas Gerais</CardTitle>
-            <TrendingDown className="w-4 h-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(summary.despesasGerais)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm border-slate-200 bg-slate-50/50">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-slate-800">Saldo Líquido</CardTitle>
-            <Wallet className="w-4 h-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div
-              className={`text-2xl font-bold ${
-                summary.saldoLiquido >= 0 ? 'text-blue-700' : 'text-red-700'
-              }`}
-            >
-              {formatCurrency(summary.saldoLiquido)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card id="transactions-table" className="shadow-sm border-slate-200 overflow-hidden">
-        <CardHeader className="bg-slate-50/50 pb-4 border-b border-slate-100">
-          <CardTitle className="text-lg text-slate-800">Lista Detalhada de Transações</CardTitle>
+      <Card className="shadow-sm border-slate-200">
+        <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-2 text-slate-800 font-medium">
+            <Filter className="w-4 h-4 text-primary" /> Filtros Globais
+          </div>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto max-h-[600px] overflow-y-auto relative scroll-smooth">
-            <Table>
-              <TableHeader className="bg-white">
-                <TableRow>
-                  <TableHead className="w-[120px]">Data</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead className="w-[150px]">Categoria</TableHead>
-                  <TableHead className="w-[150px]">Observações</TableHead>
-                  <TableHead className="w-[120px]">Tipo</TableHead>
-                  <TableHead className="text-right w-[150px]">Valor</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTransactions.map((t) => {
-                  const isHighlighted =
-                    highlightDate &&
-                    (() => {
-                      try {
-                        return (
-                          new Date(t.data).toISOString().split('T')[0] ===
-                          new Date(highlightDate).toISOString().split('T')[0]
-                        )
-                      } catch {
-                        return false
-                      }
-                    })()
-
-                  return (
-                    <TableRow
-                      key={t.id}
-                      className={cn(
-                        'transition-all duration-500',
-                        isHighlighted
-                          ? 'bg-red-50/80 hover:bg-red-100/90 border-l-4 border-l-red-500 highlighted-row'
-                          : 'hover:bg-slate-50/50 border-l-4 border-l-transparent',
-                      )}
-                    >
-                      <TableCell className="text-sm text-slate-600">
-                        {format(new Date(t.data), 'dd/MM/yyyy', { locale: ptBR })}
-                      </TableCell>
-                      <TableCell className="font-medium text-slate-800">{t.descricao}</TableCell>
-                      <TableCell className="text-slate-600">{t.categoria || '-'}</TableCell>
-                      <TableCell className="max-w-[150px]">
-                        {t.observacoes ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center gap-1 cursor-help group">
-                                <MessageSquareText className="w-4 h-4 text-slate-400 group-hover:text-blue-500 shrink-0" />
-                                <span className="truncate text-xs text-slate-500 group-hover:text-blue-600">
-                                  {t.observacoes}
-                                </span>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-[300px] text-xs z-50">
-                              <p>{t.observacoes}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <span className="text-slate-300 text-xs">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={t.tipo === 'receita' ? 'default' : 'destructive'}
-                          className={
-                            t.tipo === 'receita'
-                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-none'
-                              : 'bg-red-100 text-red-800 hover:bg-red-200 border-none'
-                          }
-                        >
-                          {t.tipo === 'receita' ? 'Receita' : 'Despesa'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          'text-right font-mono font-medium',
-                          t.tipo === 'receita' ? 'text-emerald-600' : 'text-red-600',
-                        )}
-                      >
-                        {formatCurrency(t.valor)}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-                {filteredTransactions.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                      Nenhum lançamento encontrado para os filtros selecionados.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+        <CardContent className="pt-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="start-date"
+                className="text-xs font-semibold text-slate-500 uppercase tracking-wider"
+              >
+                Data Inicial
+              </Label>
+              <Input
+                id="start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-white"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="end-date"
+                className="text-xs font-semibold text-slate-500 uppercase tracking-wider"
+              >
+                Data Final
+              </Label>
+              <Input
+                id="end-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-white"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Unidade
+              </Label>
+              <Select value={unit} onValueChange={setUnit}>
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder="Todas as Unidades" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as Unidades</SelectItem>
+                  {UNIDADES.map((u) => (
+                    <SelectItem key={u} value={u}>
+                      {u}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Categoria
+              </Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder="Todas as Categorias" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as Categorias</SelectItem>
+                  {CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+        <TabsList className="w-full sm:w-auto grid grid-cols-1 sm:grid-cols-3 h-auto gap-2 p-1 bg-slate-100/50">
+          <TabsTrigger
+            value="geral"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm py-2"
+          >
+            Relatório Geral
+          </TabsTrigger>
+          <TabsTrigger
+            value="operacional"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm py-2"
+          >
+            Relatório Operacional
+          </TabsTrigger>
+          <TabsTrigger
+            value="comissoes"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm py-2"
+          >
+            Relatório de Comissões
+          </TabsTrigger>
+        </TabsList>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="shadow-sm border-slate-200">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-medium text-slate-600">
+                Total de Entradas
+              </CardTitle>
+              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-600">
+                {formatCurrency(summary.entradas)}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm border-slate-200">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-medium text-slate-600">Total de Saídas</CardTitle>
+              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                <TrendingDown className="w-4 h-4 text-red-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {formatCurrency(summary.saidas)}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm border-slate-200 bg-slate-50/50">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-medium text-slate-800">Saldo do Período</CardTitle>
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                <Wallet className="w-4 h-4 text-blue-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div
+                className={`text-2xl font-bold ${
+                  summary.saldo >= 0 ? 'text-blue-700' : 'text-red-700'
+                }`}
+              >
+                {formatCurrency(summary.saldo)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card
+          id="transactions-table"
+          className="shadow-sm border-slate-200 overflow-hidden print:shadow-none print:border-none"
+        >
+          <CardHeader className="bg-slate-50/50 pb-4 border-b border-slate-100 print:bg-transparent print:border-b-2 print:border-slate-800">
+            <CardTitle className="text-lg text-slate-800">Detalhamento de Transações</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto relative scroll-smooth print:max-h-none print:overflow-visible">
+              <Table>
+                <TableHeader className="bg-white sticky top-0 z-10 shadow-sm print:shadow-none print:bg-slate-50">
+                  <TableRow>
+                    <TableHead className="w-[100px]">Data</TableHead>
+                    <TableHead>Descrição / Observação</TableHead>
+                    <TableHead className="w-[180px]">Categoria</TableHead>
+                    <TableHead className="w-[140px]">Unidade</TableHead>
+                    <TableHead className="text-right w-[140px]">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTransactions.map((t) => {
+                    const isHighlighted =
+                      highlightDate &&
+                      (() => {
+                        try {
+                          return (
+                            new Date(t.data).toISOString().split('T')[0] ===
+                            new Date(highlightDate).toISOString().split('T')[0]
+                          )
+                        } catch {
+                          return false
+                        }
+                      })()
+
+                    return (
+                      <TableRow
+                        key={t.id}
+                        className={cn(
+                          'transition-colors',
+                          isHighlighted
+                            ? 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-500'
+                            : 'hover:bg-slate-50/50',
+                        )}
+                      >
+                        <TableCell className="text-sm text-slate-600 whitespace-nowrap">
+                          {format(new Date(t.data), 'dd/MM/yyyy', { locale: ptBR })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium text-slate-800">{t.descricao}</div>
+                          {t.observacoes && (
+                            <div
+                              className="text-xs text-slate-500 mt-0.5 line-clamp-1 print:line-clamp-none"
+                              title={t.observacoes}
+                            >
+                              {t.observacoes}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={`font-medium border-none ${getCategoryColor(t.categoria)} print:border print:border-slate-300 print:bg-transparent print:text-slate-800`}
+                          >
+                            {t.categoria || 'Sem categoria'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-slate-600 text-sm">{t.unidade}</TableCell>
+                        <TableCell
+                          className={cn(
+                            'text-right font-mono font-medium whitespace-nowrap',
+                            t.tipo === 'receita' ? 'text-emerald-600' : 'text-red-600',
+                          )}
+                        >
+                          {t.tipo === 'receita' ? '+' : '-'} {formatCurrency(Number(t.valor))}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  {filteredTransactions.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                        Nenhum lançamento encontrado para os filtros selecionados.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </Tabs>
     </div>
   )
 }

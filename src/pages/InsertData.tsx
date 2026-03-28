@@ -6,14 +6,14 @@ import { ReconciliationAlert } from '@/components/ReconciliationAlert'
 export default function InsertData() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up">
-      <ReconciliationAlert />
+      <ReconciliationAlert key="reconciliation-alert" />
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         <div className="w-full lg:w-[420px] shrink-0">
-          <TransactionForm />
-          <DashboardSummary />
+          <TransactionForm key="transaction-form" />
+          <DashboardSummary key="dashboard-summary" />
         </div>
         <div className="flex-1 w-full lg:h-[calc(100vh-8rem)]">
-          <TransactionList />
+          <TransactionList key="transaction-list" />
         </div>
       </div>
     </div>

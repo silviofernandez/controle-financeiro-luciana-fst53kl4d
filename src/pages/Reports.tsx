@@ -43,8 +43,34 @@ export default function Reports() {
       title: 'Exportando relatório',
       description: 'O documento está sendo gerado com os filtros atuais.',
     })
+
     setTimeout(() => {
-      window.print()
+      const headers = ['Data', 'Descrição', 'Observação', 'Categoria', 'Unidade', 'Tipo', 'Valor']
+      const csvContent = [
+        headers.join(','),
+        ...filteredTransactions.map((t) => {
+          const date = format(new Date(t.data), 'dd/MM/yyyy')
+          const desc = `"${(t.descricao || '').replace(/"/g, '""')}"`
+          const obs = `"${(t.observacoes || '').replace(/"/g, '""')}"`
+          const cat = `"${t.categoria || ''}"`
+          const unit = `"${t.unidade || ''}"`
+          const type = t.tipo
+          const val = t.valor
+          return `${date},${desc},${obs},${cat},${unit},${type},${val}`
+        }),
+      ].join('\n')
+
+      const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvContent], {
+        type: 'text/csv;charset=utf-8;',
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.setAttribute('href', url)
+      link.setAttribute('download', `relatorio_${activeTab}_${format(new Date(), 'yyyyMMdd')}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
     }, 500)
   }
 

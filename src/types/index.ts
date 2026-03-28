@@ -56,6 +56,7 @@ export interface Transaction {
   juridico?: boolean
   juridicoValor?: number
   equipe?: string
+  observacoes?: string
   created_at: string
 }
 

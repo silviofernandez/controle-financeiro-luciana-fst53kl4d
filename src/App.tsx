@@ -22,6 +22,7 @@ import { CommissionProvider } from './contexts/CommissionContext'
 import { BrokerProvider } from './contexts/BrokerContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { SettingsProvider } from './contexts/SettingsContext'
+import { BudgetProvider } from './contexts/BudgetContext'
 import { Loader2 } from 'lucide-react'
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -77,13 +78,15 @@ const App = () => (
       <TransactionProvider>
         <CommissionProvider>
           <BrokerProvider>
-            <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <AppRoutes />
-              </TooltipProvider>
-            </BrowserRouter>
+            <BudgetProvider>
+              <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <AppRoutes />
+                </TooltipProvider>
+              </BrowserRouter>
+            </BudgetProvider>
           </BrokerProvider>
         </CommissionProvider>
       </TransactionProvider>

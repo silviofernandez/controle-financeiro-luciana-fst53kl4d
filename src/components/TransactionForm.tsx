@@ -18,6 +18,7 @@ import { Label } from './ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Checkbox } from './ui/checkbox'
+import { Textarea } from './ui/textarea'
 import {
   Command,
   CommandInput,
@@ -68,6 +69,7 @@ export function TransactionForm() {
   const [categoria, setCategoria] = useState<string>('Outros')
   const [descricao, setDescricao] = useState('')
   const [valorInput, setValorInput] = useState('')
+  const [observacoes, setObservacoes] = useState('')
 
   const [data, setData] = useState(() => {
     try {
@@ -229,10 +231,12 @@ export function TransactionForm() {
       classificacao: tipo === 'despesa' && !isCheckpoint ? classificacao : null,
       receitaTipo: tipo === 'receita' && !isCheckpoint ? receitaTipo : undefined,
       despesaTipo: tipo === 'despesa' && !isCheckpoint ? despesaTipo : undefined,
+      observacoes: observacoes.trim() || undefined,
     })
 
     setDescricao('')
     setValorInput('')
+    setObservacoes('')
     setReceitaTipo('outro')
     setDespesaTipo('unitaria')
     setCategoria('Outros')
@@ -717,6 +721,16 @@ export function TransactionForm() {
                 )}
               </div>
             )}
+
+            <div className="space-y-1.5">
+              <Label>Observações</Label>
+              <Textarea
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                placeholder="Detalhes adicionais ou justificativas..."
+                className="bg-white min-h-[60px] resize-y"
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

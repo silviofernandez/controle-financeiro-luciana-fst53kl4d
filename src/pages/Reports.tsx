@@ -21,9 +21,17 @@ import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/utils'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ArrowDownUp, TrendingUp, TrendingDown, Activity, Wallet } from 'lucide-react'
+import {
+  ArrowDownUp,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  Wallet,
+  MessageSquareText,
+} from 'lucide-react'
 import { ReconciliationAlert } from '@/components/ReconciliationAlert'
 import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export default function Reports() {
   const { transactions } = useTransactions()
@@ -193,7 +201,8 @@ export default function Reports() {
                 <TableRow>
                   <TableHead className="w-[120px]">Data</TableHead>
                   <TableHead>Descrição</TableHead>
-                  <TableHead className="w-[180px]">Categoria</TableHead>
+                  <TableHead className="w-[150px]">Categoria</TableHead>
+                  <TableHead className="w-[150px]">Observações</TableHead>
                   <TableHead className="w-[120px]">Tipo</TableHead>
                   <TableHead className="text-right w-[150px]">Valor</TableHead>
                 </TableRow>
@@ -228,6 +237,25 @@ export default function Reports() {
                       </TableCell>
                       <TableCell className="font-medium text-slate-800">{t.descricao}</TableCell>
                       <TableCell className="text-slate-600">{t.categoria || '-'}</TableCell>
+                      <TableCell className="max-w-[150px]">
+                        {t.observacoes ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1 cursor-help group">
+                                <MessageSquareText className="w-4 h-4 text-slate-400 group-hover:text-blue-500 shrink-0" />
+                                <span className="truncate text-xs text-slate-500 group-hover:text-blue-600">
+                                  {t.observacoes}
+                                </span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-[300px] text-xs z-50">
+                              <p>{t.observacoes}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="text-slate-300 text-xs">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={t.tipo === 'receita' ? 'default' : 'destructive'}
@@ -253,7 +281,7 @@ export default function Reports() {
                 })}
                 {filteredTransactions.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                       Nenhum lançamento encontrado para os filtros selecionados.
                     </TableCell>
                   </TableRow>

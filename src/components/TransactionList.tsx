@@ -9,6 +9,7 @@ import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Input } from './ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { formatCurrency } from '@/lib/utils'
 import { UNIDADES, BANCOS } from '@/types'
 
@@ -212,6 +213,9 @@ export function TransactionList() {
                   <TableHead className="hidden lg:table-cell text-xs font-semibold">
                     Status/Banco
                   </TableHead>
+                  <TableHead className="hidden lg:table-cell text-xs font-semibold">
+                    Observações
+                  </TableHead>
                   <TableHead className="hidden md:table-cell text-center text-xs font-semibold">
                     Tipo
                   </TableHead>
@@ -262,6 +266,22 @@ export function TransactionList() {
                       >
                         {t.banco}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell max-w-[150px]">
+                      {t.observacoes ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="truncate block text-[11px] text-slate-500 cursor-help">
+                              {t.observacoes}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[250px] text-xs z-50">
+                            {t.observacoes}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-slate-300">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-center">
                       {t.tipo === 'despesa' && t.classificacao && !t.isCheckpoint && (

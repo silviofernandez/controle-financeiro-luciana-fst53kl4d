@@ -15,6 +15,7 @@ import { SummaryCards } from '@/components/dashboard/SummaryCards'
 import { DueDateAlerts } from '@/components/dashboard/DueDateAlerts'
 import { IncomeExpenseChart } from '@/components/dashboard/IncomeExpenseChart'
 import { CategoryDistribution } from '@/components/dashboard/CategoryDistribution'
+import { BudgetMonitoring } from '@/components/dashboard/BudgetMonitoring'
 import { MOCK_TRANSACTIONS } from '@/lib/dashboard-utils'
 
 export default function Index() {
@@ -52,11 +53,45 @@ export default function Index() {
   }, [rawTransactions, dateRange])
 
   const handleExportExcel = () => {
-    toast({ title: 'Exportação Concluída', description: 'O arquivo Excel está sendo baixado.' })
+    const headers = [
+      'Data',
+      'Tipo',
+      'Categoria',
+      'Descrição',
+      'Valor',
+      'Unidade',
+      'Banco',
+      'Observações',
+    ]
+    const csvContent = periodTransactions.map((t: any) =>
+      [
+        t.data ? format(parseISO(t.data), 'dd/MM/yyyy') : '',
+        t.tipo || '',
+        t.categoria || '',
+        t.descricao || '',
+        t.valor || 0,
+        t.unidade || '',
+        t.banco || '',
+        t.observacoes ? `"${t.observacoes.replace(/"/g, '""')}"` : '',
+      ].join(';'),
+    )
+    const csvStr = [headers.join(';'), ...csvContent].join('\n')
+    const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `relatorio_${format(new Date(), 'yyyy-MM')}.csv`
+    link.click()
+    toast({
+      title: 'Exportação Concluída',
+      description: 'O arquivo CSV com observações foi baixado.',
+    })
   }
 
   const handleExportPDF = () => {
-    toast({ title: 'Exportação PDF', description: 'Preparando documento para impressão.' })
+    toast({
+      title: 'Exportação PDF',
+      description: 'Preparando documento com observações para impressão.',
+    })
     setTimeout(() => window.print(), 500)
   }
 
@@ -121,6 +156,8 @@ export default function Index() {
           <DueDateAlerts transactions={rawTransactions} />
         </div>
       </div>
+
+      <BudgetMonitoring transactions={periodTransactions} />
 
       <CategoryDistribution transactions={periodTransactions} />
     </div>

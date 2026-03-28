@@ -1,17 +1,13 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useTransactions } from '@/contexts/TransactionContext'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
-interface ReconciliationAlertProps {
-  onAdjust?: (date: string) => void
-}
-
-export function ReconciliationAlert({ onAdjust }: ReconciliationAlertProps = {}) {
+export function ReconciliationAlert() {
   const { transactions } = useTransactions()
-  const [isDismissed, setIsDismissed] = useState(false)
 
   const discrepancy = useMemo(() => {
     const checkpoints = transactions.filter((t) => t.isCheckpoint)
@@ -40,18 +36,29 @@ export function ReconciliationAlert({ onAdjust }: ReconciliationAlertProps = {})
     return { difference, expectedBalance, reportedBalance, date: latestCheckpoint.data }
   }, [transactions])
 
-  const prevDifference = useRef(discrepancy?.difference)
+  const discrepancySignature = discrepancy
+    ? `${discrepancy.date}-${discrepancy.difference.toFixed(2)}`
+    : null
+
+  const [isDismissed, setIsDismissed] = useState(() => {
+    if (!discrepancySignature) return false
+    return localStorage.getItem('dismissed_discrepancy') === discrepancySignature
+  })
 
   useEffect(() => {
-    if (
-      discrepancy &&
-      prevDifference.current !== undefined &&
-      Math.abs(discrepancy.difference - prevDifference.current) > 0.01
-    ) {
+    if (discrepancySignature) {
+      setIsDismissed(localStorage.getItem('dismissed_discrepancy') === discrepancySignature)
+    } else {
       setIsDismissed(false)
     }
-    prevDifference.current = discrepancy?.difference
-  }, [discrepancy?.difference])
+  }, [discrepancySignature])
+
+  const handleDismiss = () => {
+    setIsDismissed(true)
+    if (discrepancySignature) {
+      localStorage.setItem('dismissed_discrepancy', discrepancySignature)
+    }
+  }
 
   if (!discrepancy) return null
 
@@ -95,7 +102,7 @@ export function ReconciliationAlert({ onAdjust }: ReconciliationAlertProps = {})
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setIsDismissed(true)}
+          onClick={handleDismiss}
           className="bg-transparent border-red-300 text-red-700 hover:bg-red-100 hover:text-red-800 w-full sm:w-auto"
         >
           Desconsiderar
@@ -103,10 +110,12 @@ export function ReconciliationAlert({ onAdjust }: ReconciliationAlertProps = {})
         <Button
           variant="destructive"
           size="sm"
-          onClick={() => onAdjust?.(discrepancy.date)}
+          asChild
           className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto shadow-sm"
         >
-          Ajustar Divergência
+          <Link to="/configuracoes" target="_blank" rel="noopener noreferrer">
+            Ajustar Divergência
+          </Link>
         </Button>
       </div>
     </Alert>

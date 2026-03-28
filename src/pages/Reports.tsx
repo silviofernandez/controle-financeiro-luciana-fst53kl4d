@@ -91,7 +91,9 @@ export default function Reports() {
           const tTime = parseISO(t.data).getTime()
           return !isNaN(tTime) && tTime >= start
         })
-      } catch (e) {}
+      } catch (e) {
+        // Ignore invalid start date
+      }
     }
 
     if (endDate) {
@@ -101,7 +103,9 @@ export default function Reports() {
           const tTime = parseISO(t.data).getTime()
           return !isNaN(tTime) && tTime <= end
         })
-      } catch (e) {}
+      } catch (e) {
+        // Ignore invalid end date
+      }
     }
 
     return filtered.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())

@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Trash2 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
-import { Role } from './TeamCommissionManager'
+import { Role } from './TeamRoleForm'
 
 interface Props {
   roles: Role[]

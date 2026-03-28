@@ -18,8 +18,16 @@ import { Label } from './ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Checkbox } from './ui/checkbox'
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandGroup,
+  CommandItem,
+} from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn, formatCurrency, parseCurrency } from '@/lib/utils'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Plus } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import {
   AlertDialog,
@@ -49,7 +57,7 @@ const BANCO_MAP: Record<string, Banco> = {
 
 export function TransactionForm() {
   const { addTransaction, transactions } = useTransactions()
-  const { brokers } = useBrokers()
+  const { brokers, addBroker } = useBrokers()
   const { teams } = useCommissions()
   const { categories, applyRules } = useSettings()
 
@@ -79,6 +87,8 @@ export function TransactionForm() {
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   const [participantNames, setParticipantNames] = useState<Record<string, string>>({})
   const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({})
+  const [openCombobox, setOpenCombobox] = useState<Record<string, boolean>>({})
+  const [searchTerms, setSearchTerms] = useState<Record<string, string>>({})
 
   const [notaFiscal, setNotaFiscal] = useState(false)
   const [juridico, setJuridico] = useState(false)
@@ -189,6 +199,9 @@ export function TransactionForm() {
     if (team) {
       setNotaFiscal(team.defaultTax)
       setJuridico(team.defaultLegal)
+      if (team.legalValue !== undefined) {
+        setJuridicoValorInput(formatCurrency(team.legalValue))
+      }
 
       const vars: Record<string, string> = {}
       team.rules.forEach((r) => {
@@ -311,7 +324,8 @@ export function TransactionForm() {
       if (!team) return
 
       const gross = parseCurrency(valorInput)
-      const taxAmount = notaFiscal ? gross * 0.15 : 0
+      const taxPercentage = team.taxPercentage !== undefined ? team.taxPercentage : 15
+      const taxAmount = notaFiscal ? gross * (taxPercentage / 100) : 0
       const legalAmount = juridico ? parseCurrency(juridicoValorInput) : 0
       const netBase = Math.max(0, gross - taxAmount - legalAmount)
 
@@ -482,62 +496,145 @@ export function TransactionForm() {
                 {selectedTeamId &&
                   teams
                     .find((t) => t.id === selectedTeamId)
-                    ?.rules.map((rule) => (
-                      <div
-                        key={rule.id}
-                        className="grid grid-cols-2 gap-3 pt-2 border-t border-emerald-100/50"
-                      >
-                        <div className="space-y-1.5">
-                          <Label className="text-[11px] font-semibold text-emerald-800">
-                            {rule.role}
-                          </Label>
-                          <Select
-                            value={participantNames[rule.id] || 'nao_informado'}
-                            onValueChange={(v) =>
-                              setParticipantNames((p) => ({ ...p, [rule.id]: v }))
-                            }
-                          >
-                            <SelectTrigger className="bg-white h-8 text-xs">
-                              <SelectValue placeholder="Profissional" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="nao_informado">Não informado</SelectItem>
-                              {brokers.map((b) => {
-                                const safeName = b.name?.trim() ? b.name : `sem-nome-${b.id}`
-                                return (
-                                  <SelectItem key={b.id} value={safeName}>
-                                    {b.name?.trim() ? b.name : 'Colaborador sem nome'}
+                    ?.rules.map((rule) => {
+                      const searchTerm = searchTerms[rule.id] || ''
+                      const filteredBrokers = brokers.filter((b) =>
+                        b.name.toLowerCase().includes(searchTerm.toLowerCase()),
+                      )
+                      const taxPercentage =
+                        teams.find((t) => t.id === selectedTeamId)?.taxPercentage ?? 15
+
+                      return (
+                        <div
+                          key={rule.id}
+                          className="grid grid-cols-2 gap-3 pt-2 border-t border-emerald-100/50"
+                        >
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-semibold text-emerald-800">
+                              {rule.role}
+                            </Label>
+                            <Popover
+                              open={openCombobox[rule.id]}
+                              onOpenChange={(open) =>
+                                setOpenCombobox((p) => ({ ...p, [rule.id]: open }))
+                              }
+                            >
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className="w-full justify-between h-8 text-xs font-normal bg-white px-2 overflow-hidden"
+                                >
+                                  <span className="truncate">
+                                    {participantNames[rule.id] &&
+                                    participantNames[rule.id] !== 'nao_informado'
+                                      ? participantNames[rule.id]
+                                      : 'Selecionar...'}
+                                  </span>
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[220px] p-0" align="start">
+                                <Command shouldFilter={false}>
+                                  <CommandInput
+                                    placeholder="Buscar ou cadastrar..."
+                                    value={searchTerm}
+                                    onValueChange={(v) =>
+                                      setSearchTerms((p) => ({ ...p, [rule.id]: v }))
+                                    }
+                                  />
+                                  <CommandList>
+                                    <CommandGroup>
+                                      <CommandItem
+                                        onSelect={() => {
+                                          setParticipantNames((p) => ({
+                                            ...p,
+                                            [rule.id]: 'nao_informado',
+                                          }))
+                                          setOpenCombobox((p) => ({ ...p, [rule.id]: false }))
+                                          setSearchTerms((p) => ({ ...p, [rule.id]: '' }))
+                                        }}
+                                      >
+                                        Não informado
+                                      </CommandItem>
+                                      {filteredBrokers.map((b) => (
+                                        <CommandItem
+                                          key={b.id}
+                                          value={b.name}
+                                          onSelect={() => {
+                                            setParticipantNames((p) => ({
+                                              ...p,
+                                              [rule.id]: b.name,
+                                            }))
+                                            setOpenCombobox((p) => ({ ...p, [rule.id]: false }))
+                                            setSearchTerms((p) => ({ ...p, [rule.id]: '' }))
+                                          }}
+                                        >
+                                          {b.name}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                    {filteredBrokers.length === 0 && searchTerm && (
+                                      <div className="p-1 border-t">
+                                        <Button
+                                          variant="ghost"
+                                          className="w-full text-xs text-primary justify-start h-8 px-2"
+                                          onClick={(e) => {
+                                            e.preventDefault()
+                                            const newBroker = {
+                                              id: crypto.randomUUID(),
+                                              name: searchTerm,
+                                              role: 'Corretor',
+                                              level: 'Júnior',
+                                              percentage: 0,
+                                            }
+                                            addBroker(newBroker)
+                                            setParticipantNames((p) => ({
+                                              ...p,
+                                              [rule.id]: searchTerm,
+                                            }))
+                                            setOpenCombobox((p) => ({ ...p, [rule.id]: false }))
+                                            setSearchTerms((p) => ({ ...p, [rule.id]: '' }))
+                                            toast({
+                                              title: 'Colaborador Cadastrado',
+                                              description: `${searchTerm} adicionado com sucesso.`,
+                                            })
+                                          }}
+                                        >
+                                          <Plus className="w-3 h-3 mr-2 shrink-0" />
+                                          <span className="truncate">Cadastrar "{searchTerm}"</span>
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] text-muted-foreground">
+                              Variação da Regra
+                            </Label>
+                            <Select
+                              value={selectedVariations[rule.id]}
+                              onValueChange={(v) =>
+                                setSelectedVariations((p) => ({ ...p, [rule.id]: v }))
+                              }
+                            >
+                              <SelectTrigger className="bg-white h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {rule.variations.map((v) => (
+                                  <SelectItem key={v.id} value={v.id || `var-${Math.random()}`}>
+                                    {v.name || 'Sem nome'} ({v.value}
+                                    {v.type === 'percentage' ? '%' : ' R$'})
                                   </SelectItem>
-                                )
-                              })}
-                            </SelectContent>
-                          </Select>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-[11px] text-muted-foreground">
-                            Variação da Regra
-                          </Label>
-                          <Select
-                            value={selectedVariations[rule.id]}
-                            onValueChange={(v) =>
-                              setSelectedVariations((p) => ({ ...p, [rule.id]: v }))
-                            }
-                          >
-                            <SelectTrigger className="bg-white h-8 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {rule.variations.map((v) => (
-                                <SelectItem key={v.id} value={v.id || `var-${Math.random()}`}>
-                                  {v.name || 'Sem nome'} ({v.value}
-                                  {v.type === 'percentage' ? '%' : ' R$'})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between pt-4 border-t border-emerald-100/50">
                   <div className="flex space-x-6">
@@ -551,7 +648,8 @@ export function TransactionForm() {
                         htmlFor="notaFiscal"
                         className="text-[11px] font-normal cursor-pointer"
                       >
-                        Nota Fiscal (15%)
+                        Nota Fiscal (
+                        {teams.find((t) => t.id === selectedTeamId)?.taxPercentage ?? 15}%)
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">

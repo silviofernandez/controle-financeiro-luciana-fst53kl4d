@@ -10,7 +10,14 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
-import { Role } from './TeamCommissionManager'
+
+export interface Role {
+  id: string
+  name: string
+  type: 'Percentual' | 'Valor Fixo'
+  value?: number
+  levels?: { junior: number; pleno: number; senior: number }
+}
 
 interface Props {
   onAddRole: (role: Role) => void
@@ -58,14 +65,14 @@ export function TeamRoleForm({ onAddRole }: Props) {
 
   return (
     <div className="border rounded-md p-4 bg-slate-50/50 space-y-4 shadow-sm">
-      <h4 className="font-semibold text-slate-800">Adicionar Papel à Equipe</h4>
+      <h4 className="font-semibold text-slate-800">Adicionar Papel / Regra</h4>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
         <div className="space-y-2">
-          <Label>Nome do Papel</Label>
+          <Label>Nome (ex: Captador, Apoio)</Label>
           <Input
             value={roleName}
             onChange={(e) => setRoleName(e.target.value)}
-            placeholder="Ex: Corretor, Captador..."
+            placeholder="Nome do papel/regra"
             className="bg-white"
           />
         </div>
@@ -156,7 +163,7 @@ export function TeamRoleForm({ onAddRole }: Props) {
           variant="secondary"
           className="gap-2 border shadow-sm"
         >
-          <Plus className="w-4 h-4" /> Adicionar Papel
+          <Plus className="w-4 h-4" /> Adicionar Regra
         </Button>
       </div>
     </div>

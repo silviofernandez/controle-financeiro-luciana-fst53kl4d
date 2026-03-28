@@ -23,6 +23,8 @@ import {
 import { Trash2, Plus, Tag } from 'lucide-react'
 import { UNIDADES, BANCOS } from '@/types'
 import { toast } from '@/hooks/use-toast'
+import { BrokerSettings } from '@/components/BrokerSettings'
+import { CommissionSettings } from '@/components/CommissionSettings'
 
 export default function Settings() {
   const { categories, addCategory, removeCategory, taggingRules, addRule, removeRule } =
@@ -64,7 +66,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in-up pb-10">
+    <div className="max-w-5xl mx-auto space-y-6 animate-fade-in-up pb-10">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-primary">Configurações</h2>
         <p className="text-muted-foreground mt-1">
@@ -73,9 +75,11 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="categories" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 max-w-[800px]">
           <TabsTrigger value="categories">Categorias</TabsTrigger>
           <TabsTrigger value="rules">Regras Auto-tagging</TabsTrigger>
+          <TabsTrigger value="collaborators">Colaboradores</TabsTrigger>
+          <TabsTrigger value="teams">Equipes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="categories" className="space-y-4 mt-4">
@@ -270,6 +274,14 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="collaborators" className="space-y-4 mt-4">
+          <BrokerSettings />
+        </TabsContent>
+
+        <TabsContent value="teams" className="space-y-4 mt-4">
+          <CommissionSettings />
         </TabsContent>
       </Tabs>
     </div>

@@ -79,6 +79,8 @@ export interface CommissionTeam {
   name: string
   defaultTax: boolean
   defaultLegal: boolean
+  taxPercentage?: number
+  legalValue?: number
   rules: CommissionRule[]
 }
 

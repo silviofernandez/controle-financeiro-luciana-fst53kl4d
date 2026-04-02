@@ -31,9 +31,21 @@ export default function Recovery() {
       setSubmitted(true)
       toast({ title: 'Enviado', description: 'Link de recuperação enviado com sucesso!' })
     } catch (error: any) {
+      let description = 'Falha ao solicitar recuperação.'
+
+      if (
+        error?.status === 400 ||
+        error?.message === 'Failed to authenticate.' ||
+        error?.response?.message === 'Failed to authenticate.'
+      ) {
+        description = 'E-mail não encontrado ou inválido.'
+      } else if (error?.message) {
+        description = error.message
+      }
+
       toast({
         title: 'Erro',
-        description: error.message || 'Falha ao solicitar recuperação.',
+        description,
         variant: 'destructive',
       })
     } finally {

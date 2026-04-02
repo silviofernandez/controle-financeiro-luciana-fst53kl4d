@@ -28,9 +28,21 @@ export default function Login() {
       await signIn(email, password)
       navigate('/')
     } catch (error: any) {
+      let description = 'Ocorreu um erro inesperado.'
+
+      if (
+        error?.status === 400 ||
+        error?.message === 'Failed to authenticate.' ||
+        error?.response?.message === 'Failed to authenticate.'
+      ) {
+        description = 'E-mail ou senha incorretos.'
+      } else if (error?.message) {
+        description = error.message
+      }
+
       toast({
         title: 'Falha na Autenticação',
-        description: 'Credenciais inválidas. Verifique seu e-mail e senha e tente novamente.',
+        description,
         variant: 'destructive',
       })
     } finally {

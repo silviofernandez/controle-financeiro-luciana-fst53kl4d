@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-02T13:49:50.313Z",
+  "generatedAt": "2026-04-02T14:26:57.491Z",
   "collections": [
     {
       "name": "users",
@@ -98,7 +98,13 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["Jaú", "Pederneiras", "Lençóis Paulista", "Geral", "Silvio"]
+          "selectValues": [
+            "Jaú",
+            "Pederneiras",
+            "Lençóis Paulista",
+            "Geral",
+            "Pró-labore (Silvio/Luciana)"
+          ]
         },
         {
           "name": "bank",

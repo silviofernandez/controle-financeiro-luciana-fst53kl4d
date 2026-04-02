@@ -437,6 +437,7 @@ export function TransactionForm() {
       setFormType('despesa_fixa')
       setDescricao(`Pró-labore - ${extracted.establishment}`)
       setCategoria('Folha - Administrativo')
+      setUnidade('Pró-labore (Silvio/Luciana)')
     } else {
       setFormType('despesa_variavel')
       setDescricao(extracted.establishment)

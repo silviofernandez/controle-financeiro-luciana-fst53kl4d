@@ -23,7 +23,7 @@ export function DashboardSummary() {
   const totalJau = calculateUnitTotal('Jau')
   const totalPederneiras = calculateUnitTotal('Pederneiras')
   const totalLPaulista = calculateUnitTotal('L. Paulista')
-  const totalSilvio = calculateUnitTotal('Silvio')
+  const totalSilvio = calculateUnitTotal('Pró-labore (Silvio/Luciana)')
 
   const receitas = filteredTx
     .filter((t) => t.tipo === 'receita' && !t.isCheckpoint)
@@ -82,8 +82,12 @@ export function DashboardSummary() {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-md p-3 flex flex-col justify-center">
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <Building2 className="w-3 h-3" /> Silvio
+          <p
+            className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1 truncate"
+            title="Pró-labore (Silvio/Luciana)"
+          >
+            <Building2 className="w-3 h-3 shrink-0" />{' '}
+            <span className="truncate">Pró-labore (Silvio/Luciana)</span>
           </p>
           <p className="text-sm font-bold text-slate-800">{formatCurrency(totalSilvio)}</p>
         </div>

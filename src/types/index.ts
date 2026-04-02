@@ -4,7 +4,12 @@ export type ClassificacaoDespesa = 'fixo' | 'variavel' | null
 export type ReceitaTipo = 'comissao' | 'outro'
 export type DespesaTipo = 'unitaria' | 'cia'
 
-export type Unidade = 'Jau' | 'Pederneiras' | 'L. Paulista' | 'Silvio' | 'Geral'
+export type Unidade =
+  | 'Jau'
+  | 'Pederneiras'
+  | 'L. Paulista'
+  | 'Pró-labore (Silvio/Luciana)'
+  | 'Geral'
 export type Banco =
   | 'Santander'
   | 'Inter'
@@ -160,7 +165,13 @@ export const DESPESAS_VARIAVEIS = [
 
 export const CATEGORIES = [...RECEITAS, ...DESPESAS_FIXAS, ...DESPESAS_VARIAVEIS]
 
-export const UNIDADES: Unidade[] = ['Jau', 'Pederneiras', 'L. Paulista', 'Silvio', 'Geral']
+export const UNIDADES: Unidade[] = [
+  'Jau',
+  'Pederneiras',
+  'L. Paulista',
+  'Pró-labore (Silvio/Luciana)',
+  'Geral',
+]
 
 export const BANCOS: Banco[] = [
   'Santander',

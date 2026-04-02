@@ -74,7 +74,7 @@ export function TransactionForm() {
     formType === 'despesa_fixa' ? 'fixo' : formType === 'despesa_variavel' ? 'variavel' : null
   const [receitaTipo, setReceitaTipo] = useState<ReceitaTipo>('outro')
   const [despesaTipo, setDespesaTipo] = useState<DespesaTipo>('unitaria')
-  const [categoria, setCategoria] = useState<string>('Outros')
+  const [categoria, setCategoria] = useState<string>('')
   const [descricao, setDescricao] = useState('')
   const [valorInput, setValorInput] = useState('')
   const [observacoes, setObservacoes] = useState('')
@@ -247,7 +247,7 @@ export function TransactionForm() {
     setObservacoes('')
     setReceitaTipo('outro')
     setDespesaTipo('unitaria')
-    setCategoria('Outros')
+    setCategoria('')
     setSelectedTeamId('')
     setParticipantNames({})
     setSelectedVariations({})
@@ -437,7 +437,7 @@ export function TransactionForm() {
                 type="button"
                 onClick={() => {
                   setFormType('receita')
-                  setCategoria('Outros Créditos')
+                  setCategoria('')
                 }}
                 className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formType === 'receita' ? 'bg-white text-emerald-600 shadow-sm' : 'text-muted-foreground'}`}
               >
@@ -447,7 +447,7 @@ export function TransactionForm() {
                 type="button"
                 onClick={() => {
                   setFormType('despesa_fixa')
-                  setCategoria('Outros Débitos')
+                  setCategoria('')
                 }}
                 className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formType === 'despesa_fixa' ? 'bg-white text-indigo-600 shadow-sm' : 'text-muted-foreground'}`}
               >
@@ -457,7 +457,7 @@ export function TransactionForm() {
                 type="button"
                 onClick={() => {
                   setFormType('despesa_variavel')
-                  setCategoria('Outros Débitos')
+                  setCategoria('')
                 }}
                 className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formType === 'despesa_variavel' ? 'bg-white text-amber-600 shadow-sm' : 'text-muted-foreground'}`}
               >
@@ -769,7 +769,7 @@ export function TransactionForm() {
                   disabled={isCommission}
                 >
                   <SelectTrigger className="bg-white">
-                    <SelectValue />
+                    <SelectValue placeholder="Selecione a categoria" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
@@ -790,10 +790,6 @@ export function TransactionForm() {
                           {c}
                         </SelectItem>
                       ))}
-                      {categoria &&
-                        ![...RECEITAS, ...DESPESAS_FIXAS, ...DESPESAS_VARIAVEIS].includes(
-                          categoria,
-                        ) && <SelectItem value={categoria}>{categoria} (Legado)</SelectItem>}
                     </SelectGroup>
                   </SelectContent>
                 </Select>

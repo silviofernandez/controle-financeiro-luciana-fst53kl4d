@@ -194,7 +194,7 @@ export function DataImporter() {
 
       if (valor > 0 && desc) {
         const isBalance = desc.toLowerCase().includes('saldo financeiro')
-        let suggestedCategory = 'Outros'
+        let suggestedCategory = finalType === 'receita' ? 'Outros Créditos' : 'Outros Débitos'
         const lowerDesc = desc.toLowerCase()
 
         if (lowerDesc.includes('comissão venda') || lowerDesc.includes('comissao venda'))

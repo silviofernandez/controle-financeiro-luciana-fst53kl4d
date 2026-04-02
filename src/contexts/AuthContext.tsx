@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { toast } from '@/hooks/use-toast'
+import pb from '@/lib/pocketbase/client'
 
 interface User {
   id: string
@@ -19,115 +19,53 @@ const AuthContext = createContext<AuthContextData>({} as AuthContextData)
 
 export const useAuth = () => useContext(AuthContext)
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<User | null>(pb.authStore.record as User | null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check local storage for existing session
-    const storedUser = localStorage.getItem('@financeiro:user')
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser))
-      } catch (e) {
-        localStorage.removeItem('@financeiro:user')
-      }
-    }
+    setUser(pb.authStore.record as User | null)
     setIsLoading(false)
-  }, [])
 
-  const isMock = !SUPABASE_URL || SUPABASE_URL.includes('mock-project')
-
-  const signIn = async (email: string, pass: string) => {
-    if (isMock) {
-      await new Promise((r) => setTimeout(r, 800))
-      if (pass === 'wrong') throw new Error('Credenciais inválidas.')
-      const mockUser = { id: crypto.randomUUID(), email }
-      setUser(mockUser)
-      localStorage.setItem('@financeiro:user', JSON.stringify(mockUser))
-      return
-    }
-
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-      method: 'POST',
-      headers: {
-        apikey: SUPABASE_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password: pass }),
+    const unsubscribe = pb.authStore.onChange((token, record) => {
+      setUser(record as User | null)
     })
 
-    if (!res.ok) {
-      const data = await res.json()
-      throw new Error(data.error_description || data.msg || 'Erro ao entrar.')
+    return () => {
+      unsubscribe()
     }
+  }, [])
 
-    const data = await res.json()
-    const newUser = { id: data.user.id, email: data.user.email }
-    setUser(newUser)
-    localStorage.setItem('@financeiro:user', JSON.stringify(newUser))
+  const signIn = async (email: string, pass: string) => {
+    try {
+      await pb.collection('users').authWithPassword(email, pass)
+    } catch (error: any) {
+      throw new Error(error.message || 'Erro ao entrar.')
+    }
   }
 
   const signUp = async (email: string, pass: string) => {
-    if (isMock) {
-      await new Promise((r) => setTimeout(r, 800))
-      const mockUser = { id: crypto.randomUUID(), email }
-      setUser(mockUser)
-      localStorage.setItem('@financeiro:user', JSON.stringify(mockUser))
-      return
-    }
-
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
-      method: 'POST',
-      headers: {
-        apikey: SUPABASE_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password: pass }),
-    })
-
-    if (!res.ok) {
-      const data = await res.json()
-      throw new Error(data.error_description || data.msg || 'Erro ao registrar.')
-    }
-
-    const data = await res.json()
-    // For auto-confirm setups, user might be returned directly
-    if (data.user) {
-      const newUser = { id: data.user.id, email: data.user.email }
-      setUser(newUser)
-      localStorage.setItem('@financeiro:user', JSON.stringify(newUser))
-    } else {
-      toast({ title: 'Aviso', description: 'Verifique seu e-mail para confirmar a conta.' })
+    try {
+      await pb.collection('users').create({
+        email,
+        password: pass,
+        passwordConfirm: pass,
+      })
+      await pb.collection('users').authWithPassword(email, pass)
+    } catch (error: any) {
+      throw new Error(error.message || 'Erro ao registrar.')
     }
   }
 
   const signOut = () => {
-    setUser(null)
-    localStorage.removeItem('@financeiro:user')
+    pb.authStore.clear()
   }
 
   const recoverPassword = async (email: string) => {
-    if (isMock) {
-      await new Promise((r) => setTimeout(r, 800))
-      return
-    }
-
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
-      method: 'POST',
-      headers: {
-        apikey: SUPABASE_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email }),
-    })
-
-    if (!res.ok) {
-      const data = await res.json()
-      throw new Error(data.error_description || data.msg || 'Erro ao solicitar recuperação.')
+    try {
+      await pb.collection('users').requestPasswordReset(email)
+    } catch (error: any) {
+      throw new Error(error.message || 'Erro ao solicitar recuperação.')
     }
   }
 

@@ -1,13 +1,15 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { Transaction } from '@/types'
 import { toast } from '@/hooks/use-toast'
-import { getMockData } from '@/data/mock'
+import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
+import { useAuth } from './AuthContext'
 
 interface TransactionContextData {
   transactions: Transaction[]
-  addTransaction: (t: Omit<Transaction, 'id' | 'created_at'>) => void
-  addTransactions: (ts: Omit<Transaction, 'id' | 'created_at'>[]) => void
-  deleteTransaction: (id: string) => void
+  addTransaction: (t: Omit<Transaction, 'id' | 'created_at'>) => Promise<void>
+  addTransactions: (ts: Omit<Transaction, 'id' | 'created_at'>[]) => Promise<void>
+  deleteTransaction: (id: string) => Promise<void>
   isSyncing: boolean
   syncData: () => Promise<void>
 }
@@ -16,58 +18,141 @@ const TransactionContext = createContext<TransactionContextData>({} as Transacti
 
 export const useTransactions = () => useContext(TransactionContext)
 
-export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem('@financeiro:transactions:v3')
-    if (saved) return JSON.parse(saved)
-    return getMockData()
-  })
+const mapRecordToTransaction = (record: any): Transaction => {
+  let tipo: 'receita' | 'despesa' = 'despesa'
+  let classificacao: 'fixo' | 'variavel' | null = null
 
+  if (record.type === 'Receita') {
+    tipo = 'receita'
+  } else if (record.type === 'Despesa Fixa') {
+    tipo = 'despesa'
+    classificacao = 'fixo'
+  } else if (record.type === 'Despesa Variável') {
+    tipo = 'despesa'
+    classificacao = 'variavel'
+  }
+
+  let unidade = record.unit
+  if (unidade === 'Jaú') unidade = 'Jau'
+  if (unidade === 'Lençóis Paulista') unidade = 'L. Paulista'
+
+  return {
+    id: record.id,
+    tipo,
+    descricao: record.description,
+    valor: record.amount,
+    data: record.date,
+    categoria: record.category,
+    unidade: unidade,
+    banco: record.bank,
+    classificacao,
+    observacoes: record.observations,
+    created_at: record.created,
+  }
+}
+
+const mapTransactionToRecord = (t: Omit<Transaction, 'id' | 'created_at'>, userId: string) => {
+  let pbType = 'Despesa Variável'
+  if (t.tipo === 'receita') {
+    pbType = 'Receita'
+  } else if (t.classificacao === 'fixo') {
+    pbType = 'Despesa Fixa'
+  }
+
+  let pbUnit = t.unidade as string
+  if (pbUnit === 'Jau') pbUnit = 'Jaú'
+  if (pbUnit === 'L. Paulista') pbUnit = 'Lençóis Paulista'
+
+  return {
+    user_id: userId,
+    description: t.descricao,
+    amount: t.valor,
+    date: new Date(t.data).toISOString(),
+    type: pbType,
+    category: t.categoria || 'Outros',
+    unit: pbUnit,
+    bank: t.banco || 'Outros',
+    observations: t.observacoes || '',
+  }
+}
+
+export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth()
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isSyncing, setIsSyncing] = useState(false)
 
-  useEffect(() => {
-    localStorage.setItem('@financeiro:transactions:v3', JSON.stringify(transactions))
-  }, [transactions])
-
-  const addTransaction = (t: Omit<Transaction, 'id' | 'created_at'>) => {
-    const newTx: Transaction = {
-      ...t,
-      id: crypto.randomUUID(),
-      created_at: new Date().toISOString(),
+  const loadData = useCallback(async () => {
+    if (!user) return
+    try {
+      const records = await pb.collection('transactions').getFullList({
+        sort: '-date',
+      })
+      setTransactions(records.map(mapRecordToTransaction))
+    } catch (e) {
+      console.error('Error loading transactions', e)
     }
-    setTransactions((prev) =>
-      [newTx, ...prev].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()),
-    )
-    toast({ title: 'Sucesso!', description: 'Lançamento adicionado com sucesso.' })
-  }
+  }, [user])
 
-  const addTransactions = (ts: Omit<Transaction, 'id' | 'created_at'>[]) => {
-    const newTxs: Transaction[] = ts.map((t) => ({
-      ...t,
-      id: crypto.randomUUID(),
-      created_at: new Date().toISOString(),
-    }))
-    setTransactions((prev) =>
-      [...newTxs, ...prev].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()),
-    )
-    toast({ title: 'Sucesso!', description: `${ts.length} lançamentos adicionados com sucesso.` })
-  }
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
-  const deleteTransaction = (id: string) => {
-    setTransactions((prev) => prev.filter((t) => t.id !== id))
-    toast({ title: 'Excluído', description: 'Item excluído com sucesso.' })
-  }
+  useRealtime(
+    'transactions',
+    () => {
+      loadData()
+    },
+    !!user,
+  )
 
-  const syncData = async () => {
+  const addTransaction = async (t: Omit<Transaction, 'id' | 'created_at'>) => {
+    if (!user) return
     setIsSyncing(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      toast({ title: 'Sincronizado', description: 'Dados enviados para a nuvem!' })
-    } catch (e) {
-      toast({ title: 'Erro', description: 'Erro ao sincronizar.', variant: 'destructive' })
+      await pb.collection('transactions').create(mapTransactionToRecord(t, user.id))
+      toast({ title: 'Sucesso!', description: 'Lançamento adicionado com sucesso.' })
+    } catch (error: any) {
+      toast({ title: 'Erro', description: 'Falha ao adicionar.', variant: 'destructive' })
     } finally {
       setIsSyncing(false)
     }
+  }
+
+  const addTransactions = async (ts: Omit<Transaction, 'id' | 'created_at'>[]) => {
+    if (!user) return
+    setIsSyncing(true)
+    try {
+      for (const t of ts) {
+        await pb.collection('transactions').create(mapTransactionToRecord(t, user.id))
+      }
+      toast({ title: 'Sucesso!', description: `${ts.length} lançamentos adicionados com sucesso.` })
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: 'Falha ao importar alguns lançamentos.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSyncing(false)
+      loadData()
+    }
+  }
+
+  const deleteTransaction = async (id: string) => {
+    setIsSyncing(true)
+    try {
+      await pb.collection('transactions').delete(id)
+      toast({ title: 'Excluído', description: 'Item excluído com sucesso.' })
+    } catch (error) {
+      toast({ title: 'Erro', description: 'Falha ao excluir.', variant: 'destructive' })
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
+  const syncData = async () => {
+    await loadData()
+    toast({ title: 'Sincronizado', description: 'Dados atualizados com a nuvem!' })
   }
 
   return (

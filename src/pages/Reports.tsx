@@ -357,7 +357,8 @@ function OperationalView({
   }, [transactions])
 
   const rows = useMemo(() => {
-    let runningTotal = 0
+    let dailyRunningTotal = 0
+    let grandTotal = 0
     let jauTotal = 0
     let pederneirasTotal = 0
     let lpaulistaTotal = 0
@@ -371,13 +372,15 @@ function OperationalView({
       const day = !isNaN(dateObj.getTime()) ? dateObj.toISOString().split('T')[0] : ''
 
       if (currentDay && day !== currentDay) {
-        result.push({ type: 'daily_summary', date: currentDay, saldoFinanceiro: runningTotal })
+        result.push({ type: 'daily_summary', date: currentDay, saldoFinanceiro: dailyRunningTotal })
+        dailyRunningTotal = 0
       }
       currentDay = day
 
       const val = Number(t.valor)
       const signedVal = t.tipo === 'receita' ? val : -val
-      runningTotal += signedVal
+      dailyRunningTotal += signedVal
+      grandTotal += signedVal
 
       const u = t.unidade
       if (u === 'Jaú' || u === 'Jau') jauTotal += signedVal
@@ -385,11 +388,11 @@ function OperationalView({
       else if (u === 'L. Paulista' || u === 'Lençóis Paulista') lpaulistaTotal += signedVal
       else if (u === 'Pró-labore (Silvio/Luciana)') prolaboreTotal += signedVal
 
-      result.push({ type: 'transaction', transaction: t, saldoFinanceiro: runningTotal })
+      result.push({ type: 'transaction', transaction: t, saldoFinanceiro: dailyRunningTotal })
     })
 
     if (currentDay) {
-      result.push({ type: 'daily_summary', date: currentDay, saldoFinanceiro: runningTotal })
+      result.push({ type: 'daily_summary', date: currentDay, saldoFinanceiro: dailyRunningTotal })
     }
 
     result.push({
@@ -398,7 +401,7 @@ function OperationalView({
       pederneiras: pederneirasTotal,
       lpaulista: lpaulistaTotal,
       prolabore: prolaboreTotal,
-      saldoFinanceiro: runningTotal,
+      saldoFinanceiro: grandTotal,
     })
 
     return result
@@ -656,6 +659,7 @@ function DfcReport({ transactions }: { transactions: any[] }) {
         'ISSQN',
         'Simples Nacional',
         'Parcelamento Simples',
+        'Simples Nacional Parcelado',
         'IR',
         'ITBI e Empreendimentos',
       ],
@@ -663,9 +667,16 @@ function DfcReport({ transactions }: { transactions: any[] }) {
     {
       title: '1.5 Trabalhistas',
       isExpense: true,
-      categories: DESPESAS_FIXAS.filter((c) => c.startsWith('Folha')).concat(
+      categories: DESPESAS_FIXAS.filter((c) => c.startsWith('Folha')).concat([
         'Segurança do Trabalho',
-      ),
+        'FGTS e Rescisões',
+        'Adiantamentos de Salário',
+      ]),
+    },
+    {
+      title: '1.5.1 Pró-labore (Silvio/Luciana)',
+      isExpense: true,
+      categories: ['Pró-labore'],
     },
     {
       title: '1.6 Despesas Vendas',
@@ -700,7 +711,13 @@ function DfcReport({ transactions }: { transactions: any[] }) {
     {
       title: '1.9 Financeiras',
       isExpense: true,
-      categories: ['Tarifas Bancárias', 'Tarifa DOC/TED', 'Multa e Juros Bancários', 'Taxa Boleto'],
+      categories: [
+        'Tarifas Bancárias',
+        'Tarifa DOC/TED',
+        'Multa e Juros Bancários',
+        'Taxa Boleto',
+        'Acordos a pagar parcelados',
+      ],
     },
     {
       title: '1.10 Manutenções',

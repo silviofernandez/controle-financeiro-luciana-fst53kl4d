@@ -40,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await pb.collection('users').authWithPassword(email, pass)
     } catch (error: any) {
-      throw new Error(error.message || 'Erro ao entrar.')
+      throw error
     }
   }
 
@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
       await pb.collection('users').authWithPassword(email, pass)
     } catch (error: any) {
-      throw new Error(error.message || 'Erro ao registrar.')
+      throw error
     }
   }
 
@@ -65,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await pb.collection('users').requestPasswordReset(email)
     } catch (error: any) {
-      throw new Error(error.message || 'Erro ao solicitar recuperação.')
+      throw error
     }
   }
 

@@ -30,7 +30,7 @@ export default function Login() {
     } catch (error: any) {
       toast({
         title: 'Falha na Autenticação',
-        description: error.message || 'Verifique suas credenciais e tente novamente.',
+        description: 'Credenciais inválidas. Verifique seu e-mail e senha e tente novamente.',
         variant: 'destructive',
       })
     } finally {

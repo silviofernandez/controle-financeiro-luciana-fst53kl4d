@@ -46,7 +46,10 @@ export default function Register() {
       } else if (fieldErrors.password) {
         description = fieldErrors.password
       } else if (error.message) {
-        description = error.message
+        description =
+          error.message === 'Failed to create record.'
+            ? 'Não foi possível criar o registro. Verifique os dados informados e tente novamente.'
+            : error.message
       }
 
       toast({

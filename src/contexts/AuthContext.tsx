@@ -37,24 +37,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const signIn = async (email: string, pass: string) => {
-    try {
-      await pb.collection('users').authWithPassword(email, pass)
-    } catch (error: any) {
-      throw error
-    }
+    await pb.collection('users').authWithPassword(email, pass)
   }
 
   const signUp = async (email: string, pass: string) => {
-    try {
-      await pb.collection('users').create({
-        email,
-        password: pass,
-        passwordConfirm: pass,
-      })
-      await pb.collection('users').authWithPassword(email, pass)
-    } catch (error: any) {
-      throw error
-    }
+    await pb.collection('users').create({
+      email,
+      password: pass,
+      passwordConfirm: pass,
+    })
+    await pb.collection('users').authWithPassword(email, pass)
   }
 
   const signOut = () => {
@@ -62,11 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const recoverPassword = async (email: string) => {
-    try {
-      await pb.collection('users').requestPasswordReset(email)
-    } catch (error: any) {
-      throw error
-    }
+    await pb.collection('users').requestPasswordReset(email)
   }
 
   return (

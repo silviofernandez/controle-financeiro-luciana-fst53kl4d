@@ -52,7 +52,16 @@ export default function Reports() {
     })
 
     setTimeout(() => {
-      const headers = ['Data', 'Descrição', 'Observação', 'Categoria', 'Unidade', 'Tipo', 'Valor']
+      const headers = [
+        'Data',
+        'Descrição',
+        'Observação',
+        'Categoria',
+        'Unidade',
+        'Banco',
+        'Tipo',
+        'Valor',
+      ]
       const csvContent = [
         headers.join(','),
         ...filteredTransactions.map((t) => {
@@ -61,9 +70,10 @@ export default function Reports() {
           const obs = `"${(t.observacoes || '').replace(/"/g, '""')}"`
           const cat = `"${t.categoria || ''}"`
           const unit = `"${t.unidade || ''}"`
+          const banco = `"${t.banco || ''}"`
           const type = t.tipo
           const val = t.valor
-          return `${date},${desc},${obs},${cat},${unit},${type},${val}`
+          return `${date},${desc},${obs},${cat},${unit},${banco},${type},${val}`
         }),
       ].join('\n')
 
@@ -428,6 +438,7 @@ function OperationalView({
                 <TableHead className="text-right min-w-[140px] font-bold">
                   Saldo Financeiro
                 </TableHead>
+                <TableHead className="min-w-[120px]">Banco</TableHead>
                 <TableHead className="min-w-[200px]">Histórico</TableHead>
               </TableRow>
             </TableHeader>
@@ -453,7 +464,7 @@ function OperationalView({
                       >
                         {formatCurrency(row.saldoFinanceiro)}
                       </TableCell>
-                      <TableCell></TableCell>
+                      <TableCell colSpan={2}></TableCell>
                     </TableRow>
                   )
                 }
@@ -479,7 +490,7 @@ function OperationalView({
                       >
                         {formatCurrency(row.saldoFinanceiro)}
                       </TableCell>
-                      <TableCell></TableCell>
+                      <TableCell colSpan={2}></TableCell>
                     </TableRow>
                   )
                 }
@@ -561,6 +572,9 @@ function OperationalView({
                       )}
                     >
                       {formatCurrency(row.saldoFinanceiro)}
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-600 whitespace-nowrap">
+                      {t.banco || '-'}
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-slate-800">{t.descricao}</div>
@@ -665,7 +679,7 @@ function DfcReport({ transactions }: { transactions: any[] }) {
       ],
     },
     {
-      title: '1.5 Trabalhistas',
+      title: '1.5 Pagamentos Trabalhistas',
       isExpense: true,
       categories: DESPESAS_FIXAS.filter((c) => c.startsWith('Folha')).concat([
         'Segurança do Trabalho',
@@ -709,14 +723,14 @@ function DfcReport({ transactions }: { transactions: any[] }) {
       ],
     },
     {
-      title: '1.9 Financeiras',
+      title: '1.9 Pagamentos Despesas Financeiras',
       isExpense: true,
       categories: [
         'Tarifas Bancárias',
         'Tarifa DOC/TED',
         'Multa e Juros Bancários',
         'Taxa Boleto',
-        'Acordos a pagar parcelados',
+        'Acordos e Parcelamentos',
       ],
     },
     {

@@ -158,7 +158,7 @@ export const DESPESAS_VARIAVEIS = [
   'Tarifa DOC/TED',
   'Multa e Juros Bancários',
   'Taxa Boleto',
-  'Acordos a pagar parcelados',
+  'Acordos e Parcelamentos',
   'Marketing Digital',
   'Marketing Impresso',
   'Serviços Terceiros',

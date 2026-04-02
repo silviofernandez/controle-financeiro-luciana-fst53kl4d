@@ -87,6 +87,8 @@ export const applyAutoTagging = (desc: string) => {
     return { category: 'Tarifa DOC/TED', pbType: 'Despesa Variável' }
   if (d.includes('tarifa') || d.includes('tarifas diversas'))
     return { category: 'Tarifas Bancárias', pbType: 'Despesa Variável' }
+  if (d.includes('acordo') || d.includes('parcelamento'))
+    return { category: 'Acordos e Parcelamentos', pbType: 'Despesa Variável' }
   if (d.includes('empréstimo') || d.includes('emprestimo') || d.includes('financiamento'))
     return { category: 'Empréstimo e Financiamento', pbType: 'Despesa Variável' }
   if (d.includes('combustível') || d.includes('combustivel') || d.includes('gasolina'))

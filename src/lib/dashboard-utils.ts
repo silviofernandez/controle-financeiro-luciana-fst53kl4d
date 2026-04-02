@@ -5,5 +5,3 @@ export const formatCurrency = (value: number) => {
 }
 
 export const toSlug = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '_')
-
-export const MOCK_TRANSACTIONS: any[] = []

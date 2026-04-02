@@ -16,12 +16,11 @@ import { DueDateAlerts } from '@/components/dashboard/DueDateAlerts'
 import { IncomeExpenseChart } from '@/components/dashboard/IncomeExpenseChart'
 import { CategoryDistribution } from '@/components/dashboard/CategoryDistribution'
 import { BudgetMonitoring } from '@/components/dashboard/BudgetMonitoring'
-import { MOCK_TRANSACTIONS } from '@/lib/dashboard-utils'
 
 export default function Index() {
   const { toast } = useToast()
   const { transactions: contextTransactions } = useTransactions() || { transactions: [] }
-  const rawTransactions = contextTransactions?.length > 0 ? contextTransactions : MOCK_TRANSACTIONS
+  const rawTransactions = contextTransactions || []
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),

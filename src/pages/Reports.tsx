@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTransactions } from '@/contexts/TransactionContext'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -16,22 +16,29 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatCurrency, cn } from '@/lib/utils'
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { TrendingUp, TrendingDown, Wallet, Download, Filter, FileSpreadsheet } from 'lucide-react'
-import { CATEGORIES, UNIDADES, RECEITAS, DESPESAS_FIXAS, DESPESAS_VARIAVEIS } from '@/types'
+import { CATEGORIES, UNIDADES, RECEITAS, DESPESAS_FIXAS } from '@/types'
 import { toast } from '@/hooks/use-toast'
 import { ReconciliationAlert } from '@/components/ReconciliationAlert'
 
 export default function Reports() {
   const { transactions } = useTransactions()
-  const [activeTab, setActiveTab] = useState('geral')
+  const [viewMode, setViewMode] = useState<'operacional' | 'dfc'>(() => {
+    return (localStorage.getItem('reports_view_mode') as 'operacional' | 'dfc') || 'operacional'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('reports_view_mode', viewMode)
+  }, [viewMode])
+
   const [startDate, setStartDate] = useState<string>('')
   const [endDate, setEndDate] = useState<string>('')
   const [unit, setUnit] = useState<string>('all')
@@ -66,7 +73,7 @@ export default function Reports() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.setAttribute('href', url)
-      link.setAttribute('download', `relatorio_${activeTab}_${format(new Date(), 'yyyyMMdd')}.csv`)
+      link.setAttribute('download', `relatorio_${viewMode}_${format(new Date(), 'yyyyMMdd')}.csv`)
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
       link.click()
@@ -76,7 +83,7 @@ export default function Reports() {
 
   const handleAdjustDivergence = (date: string) => {
     setHighlightDate(date)
-    setActiveTab('geral')
+    setViewMode('operacional')
     setUnit('all')
     setCategory('all')
     setStartDate('')
@@ -93,17 +100,15 @@ export default function Reports() {
   const filteredTransactions = useMemo(() => {
     let filtered = transactions.filter((t) => !t.isCheckpoint)
 
-    // Tab Filter
-    if (activeTab === 'operacional') {
-      filtered = filtered.filter((t) => t.categoria !== 'Comissão' && t.categoria !== 'Comissões')
-    } else if (activeTab === 'comissoes') {
-      filtered = filtered.filter((t) => t.categoria === 'Comissão' || t.categoria === 'Comissões')
-    }
-
     // Global Filters
     if (unit !== 'all') {
       const unitToMatch = unit === 'Lençóis' ? 'L. Paulista' : unit
-      filtered = filtered.filter((t) => t.unidade === unitToMatch)
+      filtered = filtered.filter((t) => {
+        if (unitToMatch === 'L. Paulista')
+          return t.unidade === 'L. Paulista' || t.unidade === 'Lençóis Paulista'
+        if (unitToMatch === 'Jaú') return t.unidade === 'Jau' || t.unidade === 'Jaú'
+        return t.unidade === unitToMatch
+      })
     }
 
     if (category !== 'all') {
@@ -135,7 +140,7 @@ export default function Reports() {
     }
 
     return filtered.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
-  }, [transactions, activeTab, unit, category, startDate, endDate])
+  }, [transactions, unit, category, startDate, endDate])
 
   const summary = useMemo(() => {
     const entradas = filteredTransactions
@@ -151,23 +156,6 @@ export default function Reports() {
     return { entradas, saidas, saldo }
   }, [filteredTransactions])
 
-  const getCategoryColor = (cat: string) => {
-    const colors: Record<string, string> = {
-      Alimentação: 'bg-orange-100 text-orange-800',
-      Transporte: 'bg-blue-100 text-blue-800',
-      Casa: 'bg-teal-100 text-teal-800',
-      Saúde: 'bg-red-100 text-red-800',
-      Lazer: 'bg-purple-100 text-purple-800',
-      Trabalho: 'bg-indigo-100 text-indigo-800',
-      Impostos: 'bg-rose-100 text-rose-800',
-      Fornecedores: 'bg-amber-100 text-amber-800',
-      'Folha de Pagamento': 'bg-cyan-100 text-cyan-800',
-      Comissão: 'bg-emerald-100 text-emerald-800',
-      Outros: 'bg-slate-100 text-slate-800',
-    }
-    return colors[cat] || 'bg-slate-100 text-slate-800'
-  }
-
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up pb-10">
       <ReconciliationAlert onAdjust={handleAdjustDivergence} />
@@ -177,17 +165,44 @@ export default function Reports() {
           <h2 className="text-2xl font-bold tracking-tight text-primary">
             Central de Relatórios Avançados
           </h2>
-          <p className="text-muted-foreground mt-1">
-            Analise o desempenho financeiro geral, operacional e de comissões.
-          </p>
+          <p className="text-muted-foreground mt-1">Analise o desempenho financeiro da empresa.</p>
         </div>
-        <Button
-          onClick={handleExport}
-          className="whitespace-nowrap shadow-sm bg-primary hover:bg-primary/90 text-white"
-        >
-          <Download className="w-4 h-4 mr-2" />
-          Exportar Relatório
-        </Button>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+          <div className="flex items-center gap-3 bg-slate-100 p-1 rounded-lg border border-slate-200 w-full sm:w-auto">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-2 hidden sm:inline-block">
+              Modo de Visualização:
+            </span>
+            <Tabs
+              value={viewMode}
+              onValueChange={(v) => setViewMode(v as 'operacional' | 'dfc')}
+              className="w-full sm:w-auto"
+            >
+              <TabsList className="h-8 w-full sm:w-auto bg-transparent">
+                <TabsTrigger
+                  value="operacional"
+                  className="text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                >
+                  Modo 1: Visão Operacional
+                </TabsTrigger>
+                <TabsTrigger
+                  value="dfc"
+                  className="text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                >
+                  Modo 2: Visão DFC
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          <Button
+            onClick={handleExport}
+            className="whitespace-nowrap shadow-sm bg-primary hover:bg-primary/90 text-white w-full sm:w-auto"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Exportar
+          </Button>
+        </div>
       </div>
 
       <Card className="shadow-sm border-slate-200">
@@ -268,197 +283,319 @@ export default function Reports() {
         </CardContent>
       </Card>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
-        <TabsList className="w-full sm:w-auto grid grid-cols-1 sm:grid-cols-4 h-auto gap-2 p-1 bg-slate-100/50">
-          <TabsTrigger
-            value="geral"
-            className="data-[state=active]:bg-white data-[state=active]:shadow-sm py-2"
-          >
-            Relatório Geral
-          </TabsTrigger>
-          <TabsTrigger
-            value="dfc"
-            className="data-[state=active]:bg-white data-[state=active]:shadow-sm py-2"
-          >
-            DFC (Fluxo de Caixa)
-          </TabsTrigger>
-          <TabsTrigger
-            value="operacional"
-            className="data-[state=active]:bg-white data-[state=active]:shadow-sm py-2"
-          >
-            Operacional
-          </TabsTrigger>
-          <TabsTrigger
-            value="comissoes"
-            className="data-[state=active]:bg-white data-[state=active]:shadow-sm py-2"
-          >
-            Comissões
-          </TabsTrigger>
-        </TabsList>
-
-        {activeTab !== 'dfc' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-medium text-slate-600">
-                  Total de Entradas
-                </CardTitle>
-                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-emerald-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-emerald-600">
-                  {formatCurrency(summary.entradas)}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-medium text-slate-600">
-                  Total de Saídas
-                </CardTitle>
-                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-                  <TrendingDown className="w-4 h-4 text-red-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">
-                  {formatCurrency(summary.saidas)}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-sm border-slate-200 bg-slate-50/50">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-medium text-slate-800">
-                  Saldo do Período
-                </CardTitle>
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Wallet className="w-4 h-4 text-blue-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={`text-2xl font-bold ${
-                    summary.saldo >= 0 ? 'text-blue-700' : 'text-red-700'
-                  }`}
-                >
-                  {formatCurrency(summary.saldo)}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {activeTab === 'dfc' && <DfcReport transactions={filteredTransactions} />}
-
-        {activeTab !== 'dfc' && (
-          <Card
-            id="transactions-table"
-            className="shadow-sm border-slate-200 overflow-hidden print:shadow-none print:border-none"
-          >
-            <CardHeader className="bg-slate-50/50 pb-4 border-b border-slate-100 print:bg-transparent print:border-b-2 print:border-slate-800">
-              <CardTitle className="text-lg text-slate-800">Detalhamento de Transações</CardTitle>
+      {viewMode === 'operacional' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="shadow-sm border-slate-200">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-medium text-slate-600">
+                Total de Entradas
+              </CardTitle>
+              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+              </div>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto max-h-[600px] overflow-y-auto relative scroll-smooth print:max-h-none print:overflow-visible">
-                <Table>
-                  <TableHeader className="bg-white sticky top-0 z-10 shadow-sm print:shadow-none print:bg-slate-50">
-                    <TableRow>
-                      <TableHead className="w-[100px]">Data</TableHead>
-                      <TableHead>Descrição / Observação</TableHead>
-                      <TableHead className="w-[180px]">Categoria</TableHead>
-                      <TableHead className="w-[140px]">Unidade</TableHead>
-                      <TableHead className="text-right w-[140px]">Valor</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTransactions.map((t) => {
-                      const isHighlighted =
-                        highlightDate &&
-                        (() => {
-                          try {
-                            return (
-                              new Date(t.data).toISOString().split('T')[0] ===
-                              new Date(highlightDate).toISOString().split('T')[0]
-                            )
-                          } catch {
-                            return false
-                          }
-                        })()
-
-                      return (
-                        <TableRow
-                          key={t.id}
-                          className={cn(
-                            'transition-colors',
-                            isHighlighted
-                              ? 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-500'
-                              : 'hover:bg-slate-50/50',
-                          )}
-                        >
-                          <TableCell className="text-sm text-slate-600 whitespace-nowrap">
-                            {format(new Date(t.data), 'dd/MM/yyyy', { locale: ptBR })}
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium text-slate-800">{t.descricao}</div>
-                            {t.observacoes && (
-                              <div
-                                className="text-xs text-slate-500 mt-0.5 line-clamp-1 print:line-clamp-none"
-                                title={t.observacoes}
-                              >
-                                {t.observacoes}
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={`font-medium border-none ${getCategoryColor(t.categoria)} print:border print:border-slate-300 print:bg-transparent print:text-slate-800`}
-                            >
-                              {t.categoria || 'Sem categoria'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-slate-600 text-sm">{t.unidade}</TableCell>
-                          <TableCell
-                            className={cn(
-                              'text-right font-mono font-medium whitespace-nowrap',
-                              t.tipo === 'receita' ? 'text-emerald-600' : 'text-red-600',
-                            )}
-                          >
-                            {t.tipo === 'receita' ? '+' : '-'} {formatCurrency(Number(t.valor))}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                    {filteredTransactions.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                          Nenhum lançamento encontrado para os filtros selecionados.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-600">
+                {formatCurrency(summary.entradas)}
               </div>
             </CardContent>
           </Card>
-        )}
-      </Tabs>
+
+          <Card className="shadow-sm border-slate-200">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-medium text-slate-600">Total de Saídas</CardTitle>
+              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                <TrendingDown className="w-4 h-4 text-red-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {formatCurrency(summary.saidas)}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm border-slate-200 bg-slate-50/50">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-medium text-slate-800">Saldo do Período</CardTitle>
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                <Wallet className="w-4 h-4 text-blue-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div
+                className={cn(
+                  'text-2xl font-bold',
+                  summary.saldo >= 0 ? 'text-blue-700' : 'text-red-700',
+                )}
+              >
+                {formatCurrency(summary.saldo)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {viewMode === 'dfc' ? (
+        <DfcReport transactions={filteredTransactions} />
+      ) : (
+        <OperationalView transactions={filteredTransactions} highlightDate={highlightDate} />
+      )}
     </div>
+  )
+}
+
+function OperationalView({
+  transactions,
+  highlightDate,
+}: {
+  transactions: any[]
+  highlightDate: string | null
+}) {
+  const sorted = useMemo(() => {
+    return [...transactions].sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())
+  }, [transactions])
+
+  const rows = useMemo(() => {
+    let runningTotal = 0
+    let jauTotal = 0
+    let pederneirasTotal = 0
+    let lpaulistaTotal = 0
+    let prolaboreTotal = 0
+
+    const result: any[] = []
+    let currentDay = ''
+
+    sorted.forEach((t) => {
+      const dateObj = new Date(t.data)
+      const day = !isNaN(dateObj.getTime()) ? dateObj.toISOString().split('T')[0] : ''
+
+      if (currentDay && day !== currentDay) {
+        result.push({ type: 'daily_summary', date: currentDay, saldoFinanceiro: runningTotal })
+      }
+      currentDay = day
+
+      const val = Number(t.valor)
+      const signedVal = t.tipo === 'receita' ? val : -val
+      runningTotal += signedVal
+
+      const u = t.unidade
+      if (u === 'Jaú' || u === 'Jau') jauTotal += signedVal
+      else if (u === 'Pederneiras') pederneirasTotal += signedVal
+      else if (u === 'L. Paulista' || u === 'Lençóis Paulista') lpaulistaTotal += signedVal
+      else if (u === 'Pró-labore (Silvio/Luciana)') prolaboreTotal += signedVal
+
+      result.push({ type: 'transaction', transaction: t, saldoFinanceiro: runningTotal })
+    })
+
+    if (currentDay) {
+      result.push({ type: 'daily_summary', date: currentDay, saldoFinanceiro: runningTotal })
+    }
+
+    result.push({
+      type: 'total',
+      jau: jauTotal,
+      pederneiras: pederneirasTotal,
+      lpaulista: lpaulistaTotal,
+      prolabore: prolaboreTotal,
+      saldoFinanceiro: runningTotal,
+    })
+
+    return result
+  }, [sorted])
+
+  return (
+    <Card
+      id="transactions-table"
+      className="shadow-sm border-slate-200 overflow-hidden print:shadow-none print:border-none"
+    >
+      <CardHeader className="bg-slate-50/50 pb-4 border-b border-slate-100 print:bg-transparent print:border-b-2 print:border-slate-800">
+        <CardTitle className="text-lg text-slate-800">Visão Operacional</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto max-h-[700px] overflow-y-auto relative scroll-smooth print:max-h-none print:overflow-visible">
+          <Table>
+            <TableHeader className="bg-white sticky top-0 z-10 shadow-sm print:shadow-none print:bg-slate-50">
+              <TableRow>
+                <TableHead className="w-[100px]">Data</TableHead>
+                <TableHead className="text-right min-w-[120px]">Jaú</TableHead>
+                <TableHead className="text-right min-w-[120px]">Pederneiras</TableHead>
+                <TableHead className="text-right min-w-[120px]">L. Paulista</TableHead>
+                <TableHead className="text-right min-w-[120px]">Pró-labore</TableHead>
+                <TableHead className="text-right min-w-[140px] font-bold">
+                  Saldo Financeiro
+                </TableHead>
+                <TableHead className="min-w-[200px]">Histórico</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row, idx) => {
+                if (row.type === 'daily_summary') {
+                  return (
+                    <TableRow
+                      key={`summary-${idx}`}
+                      className="bg-blue-50 hover:bg-blue-100 font-medium border-y border-blue-100"
+                    >
+                      <TableCell
+                        colSpan={5}
+                        className="text-right text-blue-800 text-xs uppercase tracking-wider"
+                      >
+                        Saldo Diário
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          'text-right font-bold',
+                          row.saldoFinanceiro >= 0 ? 'text-blue-700' : 'text-red-700',
+                        )}
+                      >
+                        {formatCurrency(row.saldoFinanceiro)}
+                      </TableCell>
+                      <TableCell></TableCell>
+                    </TableRow>
+                  )
+                }
+
+                if (row.type === 'total') {
+                  return (
+                    <TableRow
+                      key={`total-${idx}`}
+                      className="bg-slate-800 hover:bg-slate-800 text-white font-bold"
+                    >
+                      <TableCell>TOTAL</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.jau)}</TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(row.pederneiras)}
+                      </TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.lpaulista)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.prolabore)}</TableCell>
+                      <TableCell
+                        className={cn(
+                          'text-right',
+                          row.saldoFinanceiro >= 0 ? 'text-emerald-400' : 'text-rose-400',
+                        )}
+                      >
+                        {formatCurrency(row.saldoFinanceiro)}
+                      </TableCell>
+                      <TableCell></TableCell>
+                    </TableRow>
+                  )
+                }
+
+                const t = row.transaction
+                const isHighlighted =
+                  highlightDate &&
+                  (() => {
+                    try {
+                      return (
+                        new Date(t.data).toISOString().split('T')[0] ===
+                        new Date(highlightDate).toISOString().split('T')[0]
+                      )
+                    } catch {
+                      return false
+                    }
+                  })()
+
+                const isReceita = t.tipo === 'receita'
+                const valStr = formatCurrency(Number(t.valor))
+                const signedValStr = (isReceita ? '+' : '-') + ' ' + valStr
+                const valClass = isReceita ? 'text-emerald-600' : 'text-red-600'
+
+                const u = t.unidade
+                const isJau = u === 'Jaú' || u === 'Jau'
+                const isPed = u === 'Pederneiras'
+                const isLen = u === 'L. Paulista' || u === 'Lençóis Paulista'
+                const isPro = u === 'Pró-labore (Silvio/Luciana)'
+
+                return (
+                  <TableRow
+                    key={t.id}
+                    className={cn(
+                      'transition-colors',
+                      isHighlighted
+                        ? 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-500'
+                        : 'hover:bg-slate-50/50',
+                    )}
+                  >
+                    <TableCell className="text-sm text-slate-600 whitespace-nowrap">
+                      {format(new Date(t.data), 'dd/MM/yyyy', { locale: ptBR })}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        'text-right font-mono text-sm whitespace-nowrap',
+                        isJau && valClass,
+                      )}
+                    >
+                      {isJau ? signedValStr : '-'}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        'text-right font-mono text-sm whitespace-nowrap',
+                        isPed && valClass,
+                      )}
+                    >
+                      {isPed ? signedValStr : '-'}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        'text-right font-mono text-sm whitespace-nowrap',
+                        isLen && valClass,
+                      )}
+                    >
+                      {isLen ? signedValStr : '-'}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        'text-right font-mono text-sm whitespace-nowrap',
+                        isPro && valClass,
+                      )}
+                    >
+                      {isPro ? signedValStr : '-'}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        'text-right font-mono font-medium whitespace-nowrap',
+                        row.saldoFinanceiro >= 0 ? 'text-slate-800' : 'text-red-600',
+                      )}
+                    >
+                      {formatCurrency(row.saldoFinanceiro)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium text-slate-800">{t.descricao}</div>
+                      {t.observacoes && (
+                        <div className="text-xs text-slate-500 mt-0.5 line-clamp-1 print:line-clamp-none">
+                          {t.observacoes}
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+              {rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                    Nenhum lançamento encontrado para os filtros selecionados.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
 function DfcReport({ transactions }: { transactions: any[] }) {
   const getGroupTotal = (categories: string[], isExpense: boolean) => {
-    return ['Jau', 'Pederneiras', 'L. Paulista']
+    return ['Jaú', 'Pederneiras', 'Lençóis Paulista']
       .map((unit) => {
         return transactions
-          .filter(
-            (t) => t.unidade === unit || (t.unidade === 'L. Paulista' && unit === 'L. Paulista'),
-          )
+          .filter((t) => {
+            const u = t.unidade
+            if (unit === 'Jaú') return u === 'Jau' || u === 'Jaú'
+            if (unit === 'Lençóis Paulista') return u === 'L. Paulista' || u === 'Lençóis Paulista'
+            return u === unit
+          })
           .filter((t) => t.tipo === (isExpense ? 'despesa' : 'receita'))
           .filter((t) => categories.includes(t.categoria))
           .reduce((sum, t) => sum + Number(t.valor), 0)
@@ -474,7 +611,7 @@ function DfcReport({ transactions }: { transactions: any[] }) {
   const dfcStructure = [
     { title: '1. ATIVIDADES OPERACIONAIS', type: 'header' },
     {
-      title: '1.1 Recebimentos de Vendas para Clientes',
+      title: '1.1 Recebimentos de Vendas',
       isExpense: false,
       categories: [
         'Comissões Vendas',
@@ -485,7 +622,7 @@ function DfcReport({ transactions }: { transactions: any[] }) {
       ],
     },
     {
-      title: '1.2 Outras Receitas e Deduções',
+      title: '1.2 Outras Receitas',
       isExpense: false,
       categories: RECEITAS.filter(
         (c) =>
@@ -499,7 +636,7 @@ function DfcReport({ transactions }: { transactions: any[] }) {
       ),
     },
     {
-      title: '1.3 Pagamentos Custos Indiretos',
+      title: '1.3 Custos Indiretos',
       isExpense: true,
       categories: [
         'Energia Prédio',
@@ -512,7 +649,7 @@ function DfcReport({ transactions }: { transactions: any[] }) {
       ],
     },
     {
-      title: '1.4 Pagamentos de Impostos',
+      title: '1.4 Impostos',
       isExpense: true,
       categories: [
         'IRRF PJ',
@@ -524,24 +661,32 @@ function DfcReport({ transactions }: { transactions: any[] }) {
       ],
     },
     {
-      title: '1.5 Pagamentos Trabalhistas',
+      title: '1.5 Trabalhistas',
       isExpense: true,
       categories: DESPESAS_FIXAS.filter((c) => c.startsWith('Folha')).concat(
         'Segurança do Trabalho',
       ),
     },
     {
-      title: '1.6 Despesas com Vendas',
+      title: '1.6 Despesas Vendas',
       isExpense: true,
-      categories: ['Comissões Pagas Vendas', 'Combustível Vendas', 'Comissão Gerência'],
+      categories: [
+        'Comissões Pagas Vendas',
+        'Combustível Vendas',
+        'Comissão Gerência',
+        'Combustível Locação',
+        'Combustível Pederneiras',
+        'Combustível Lençóis',
+        'Viagens e Estadias',
+      ],
     },
     {
-      title: '1.7 Despesas com Marketing',
+      title: '1.7 Marketing',
       isExpense: true,
       categories: ['Marketing Digital', 'Marketing Impresso'],
     },
     {
-      title: '1.8 Despesas Administrativas',
+      title: '1.8 Administrativas',
       isExpense: true,
       categories: [
         'Sistemas e Software',
@@ -553,7 +698,7 @@ function DfcReport({ transactions }: { transactions: any[] }) {
       ],
     },
     {
-      title: '1.9 Despesas Financeiras',
+      title: '1.9 Financeiras',
       isExpense: true,
       categories: ['Tarifas Bancárias', 'Tarifa DOC/TED', 'Multa e Juros Bancários', 'Taxa Boleto'],
     },
@@ -563,26 +708,9 @@ function DfcReport({ transactions }: { transactions: any[] }) {
       categories: ['Manutenção Equipamentos', 'Manutenção Sistemas', 'Manutenções Imóveis'],
     },
     {
-      title: '1.11 Serviços de Terceiros',
+      title: '1.11 Serviços Terceiros',
       isExpense: true,
       categories: ['Serviços Terceiros'],
-    },
-    { title: '2. ATIVIDADES DE INVESTIMENTOS', type: 'header' },
-    {
-      title: '2.1 Aquisição de Ativos',
-      isExpense: true,
-      categories: ['Aquisição Ativo'],
-    },
-    { title: '3. ATIVIDADES DE FINANCIAMENTOS', type: 'header' },
-    {
-      title: '3.1 Recebimento de Empréstimos',
-      isExpense: false,
-      categories: ['Outros Créditos'],
-    },
-    {
-      title: '3.2 Pagamentos de Empréstimos',
-      isExpense: true,
-      categories: ['Empréstimo e Financiamento'],
     },
   ]
 
@@ -613,19 +741,16 @@ function DfcReport({ transactions }: { transactions: any[] }) {
                 <TableHead className="w-[350px]">Descrição</TableHead>
                 <TableHead className="text-right">Jaú</TableHead>
                 <TableHead className="text-right">Pederneiras</TableHead>
-                <TableHead className="text-right">Lençóis P.</TableHead>
-                <TableHead className="text-right font-bold bg-slate-200/50">Total (R$)</TableHead>
-                <TableHead className="text-right">A.V. %</TableHead>
+                <TableHead className="text-right">L. Paulista</TableHead>
+                <TableHead className="text-right font-bold bg-slate-200/50">Total R$</TableHead>
+                <TableHead className="text-right">A.V.%</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row: any, idx) => {
                 if (row.type === 'header') {
                   return (
-                    <TableRow
-                      key={idx}
-                      className="bg-slate-50 hover:bg-slate-50 border-t-2 border-slate-200"
-                    >
+                    <TableRow key={idx} className="bg-slate-50 border-t-2 border-slate-200">
                       <TableCell colSpan={6} className="font-bold text-slate-700">
                         {row.title}
                       </TableCell>
@@ -637,7 +762,7 @@ function DfcReport({ transactions }: { transactions: any[] }) {
                 const av = totalReceitas > 0 ? (totalVal / totalReceitas) * 100 : 0
 
                 return (
-                  <TableRow key={idx}>
+                  <TableRow key={idx} className="hover:bg-slate-50/50">
                     <TableCell className="pl-6 text-sm">{row.title}</TableCell>
                     <TableCell className="text-right text-sm">
                       {formatCurrency(row.values[0])}
@@ -649,7 +774,10 @@ function DfcReport({ transactions }: { transactions: any[] }) {
                       {formatCurrency(row.values[2])}
                     </TableCell>
                     <TableCell
-                      className={`text-right font-medium bg-slate-50/50 ${isOp ? 'text-emerald-600' : 'text-red-600'}`}
+                      className={cn(
+                        'text-right font-medium bg-slate-50/50',
+                        isOp ? 'text-emerald-600' : 'text-red-600',
+                      )}
                     >
                       {isOp ? '+' : '-'} {formatCurrency(totalVal)}
                     </TableCell>
@@ -662,10 +790,13 @@ function DfcReport({ transactions }: { transactions: any[] }) {
             </TableBody>
             <TableFooter className="bg-slate-800 text-white">
               <TableRow className="hover:bg-slate-800">
-                <TableCell className="font-bold text-base">Resultado Líquido do Período</TableCell>
+                <TableCell className="font-bold text-base">Resultado Líquido</TableCell>
                 <TableCell colSpan={3}></TableCell>
                 <TableCell
-                  className={`text-right font-bold text-lg ${totalReceitas - totalDespesas >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+                  className={cn(
+                    'text-right font-bold text-lg',
+                    totalReceitas - totalDespesas >= 0 ? 'text-emerald-400' : 'text-rose-400',
+                  )}
                 >
                   {formatCurrency(totalReceitas - totalDespesas)}
                 </TableCell>

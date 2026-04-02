@@ -95,4 +95,22 @@ export default function Login() {
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-    
+                </button>
+              </div>
+            </div>
+            <Button type="submit" className="w-full h-11" disabled={loading}>
+              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Entrar
+            </Button>
+          </form>
+          <div className="mt-6 text-center text-sm text-slate-600">
+            Ainda não tem uma conta?{' '}
+            <Link to="/register" className="font-semibold text-primary hover:underline">
+              Registre-se
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

@@ -24,8 +24,8 @@ import { Label } from '@/components/ui/label'
 import { formatCurrency, cn } from '@/lib/utils'
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { TrendingUp, TrendingDown, Wallet, Download, Filter } from 'lucide-react'
-import { CATEGORIES, UNIDADES } from '@/types'
+import { TrendingUp, TrendingDown, Wallet, Download, Filter, FileSpreadsheet } from 'lucide-react'
+import { CATEGORIES, UNIDADES, RECEITAS, DESPESAS_FIXAS, DESPESAS_VARIAVEIS } from '@/types'
 import { toast } from '@/hooks/use-toast'
 import { ReconciliationAlert } from '@/components/ReconciliationAlert'
 
@@ -269,7 +269,7 @@ export default function Reports() {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
-        <TabsList className="w-full sm:w-auto grid grid-cols-1 sm:grid-cols-3 h-auto gap-2 p-1 bg-slate-100/50">
+        <TabsList className="w-full sm:w-auto grid grid-cols-1 sm:grid-cols-4 h-auto gap-2 p-1 bg-slate-100/50">
           <TabsTrigger
             value="geral"
             className="data-[state=active]:bg-white data-[state=active]:shadow-sm py-2"
@@ -277,160 +277,404 @@ export default function Reports() {
             Relatório Geral
           </TabsTrigger>
           <TabsTrigger
+            value="dfc"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm py-2"
+          >
+            DFC (Fluxo de Caixa)
+          </TabsTrigger>
+          <TabsTrigger
             value="operacional"
             className="data-[state=active]:bg-white data-[state=active]:shadow-sm py-2"
           >
-            Relatório Operacional
+            Operacional
           </TabsTrigger>
           <TabsTrigger
             value="comissoes"
             className="data-[state=active]:bg-white data-[state=active]:shadow-sm py-2"
           >
-            Relatório de Comissões
+            Comissões
           </TabsTrigger>
         </TabsList>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="shadow-sm border-slate-200">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">
-                Total de Entradas
-              </CardTitle>
-              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
-              </div>
+        {activeTab !== 'dfc' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-medium text-slate-600">
+                  Total de Entradas
+                </CardTitle>
+                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {formatCurrency(summary.entradas)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-medium text-slate-600">
+                  Total de Saídas
+                </CardTitle>
+                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                  <TrendingDown className="w-4 h-4 text-red-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {formatCurrency(summary.saidas)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-slate-200 bg-slate-50/50">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-medium text-slate-800">
+                  Saldo do Período
+                </CardTitle>
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-blue-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className={`text-2xl font-bold ${
+                    summary.saldo >= 0 ? 'text-blue-700' : 'text-red-700'
+                  }`}
+                >
+                  {formatCurrency(summary.saldo)}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'dfc' && <DfcReport transactions={filteredTransactions} />}
+
+        {activeTab !== 'dfc' && (
+          <Card
+            id="transactions-table"
+            className="shadow-sm border-slate-200 overflow-hidden print:shadow-none print:border-none"
+          >
+            <CardHeader className="bg-slate-50/50 pb-4 border-b border-slate-100 print:bg-transparent print:border-b-2 print:border-slate-800">
+              <CardTitle className="text-lg text-slate-800">Detalhamento de Transações</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-emerald-600">
-                {formatCurrency(summary.entradas)}
-              </div>
-            </CardContent>
-          </Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto max-h-[600px] overflow-y-auto relative scroll-smooth print:max-h-none print:overflow-visible">
+                <Table>
+                  <TableHeader className="bg-white sticky top-0 z-10 shadow-sm print:shadow-none print:bg-slate-50">
+                    <TableRow>
+                      <TableHead className="w-[100px]">Data</TableHead>
+                      <TableHead>Descrição / Observação</TableHead>
+                      <TableHead className="w-[180px]">Categoria</TableHead>
+                      <TableHead className="w-[140px]">Unidade</TableHead>
+                      <TableHead className="text-right w-[140px]">Valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTransactions.map((t) => {
+                      const isHighlighted =
+                        highlightDate &&
+                        (() => {
+                          try {
+                            return (
+                              new Date(t.data).toISOString().split('T')[0] ===
+                              new Date(highlightDate).toISOString().split('T')[0]
+                            )
+                          } catch {
+                            return false
+                          }
+                        })()
 
-          <Card className="shadow-sm border-slate-200">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">Total de Saídas</CardTitle>
-              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-                <TrendingDown className="w-4 h-4 text-red-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {formatCurrency(summary.saidas)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm border-slate-200 bg-slate-50/50">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-800">Saldo do Período</CardTitle>
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                <Wallet className="w-4 h-4 text-blue-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div
-                className={`text-2xl font-bold ${
-                  summary.saldo >= 0 ? 'text-blue-700' : 'text-red-700'
-                }`}
-              >
-                {formatCurrency(summary.saldo)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card
-          id="transactions-table"
-          className="shadow-sm border-slate-200 overflow-hidden print:shadow-none print:border-none"
-        >
-          <CardHeader className="bg-slate-50/50 pb-4 border-b border-slate-100 print:bg-transparent print:border-b-2 print:border-slate-800">
-            <CardTitle className="text-lg text-slate-800">Detalhamento de Transações</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto max-h-[600px] overflow-y-auto relative scroll-smooth print:max-h-none print:overflow-visible">
-              <Table>
-                <TableHeader className="bg-white sticky top-0 z-10 shadow-sm print:shadow-none print:bg-slate-50">
-                  <TableRow>
-                    <TableHead className="w-[100px]">Data</TableHead>
-                    <TableHead>Descrição / Observação</TableHead>
-                    <TableHead className="w-[180px]">Categoria</TableHead>
-                    <TableHead className="w-[140px]">Unidade</TableHead>
-                    <TableHead className="text-right w-[140px]">Valor</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTransactions.map((t) => {
-                    const isHighlighted =
-                      highlightDate &&
-                      (() => {
-                        try {
-                          return (
-                            new Date(t.data).toISOString().split('T')[0] ===
-                            new Date(highlightDate).toISOString().split('T')[0]
-                          )
-                        } catch {
-                          return false
-                        }
-                      })()
-
-                    return (
-                      <TableRow
-                        key={t.id}
-                        className={cn(
-                          'transition-colors',
-                          isHighlighted
-                            ? 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-500'
-                            : 'hover:bg-slate-50/50',
-                        )}
-                      >
-                        <TableCell className="text-sm text-slate-600 whitespace-nowrap">
-                          {format(new Date(t.data), 'dd/MM/yyyy', { locale: ptBR })}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium text-slate-800">{t.descricao}</div>
-                          {t.observacoes && (
-                            <div
-                              className="text-xs text-slate-500 mt-0.5 line-clamp-1 print:line-clamp-none"
-                              title={t.observacoes}
-                            >
-                              {t.observacoes}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={`font-medium border-none ${getCategoryColor(t.categoria)} print:border print:border-slate-300 print:bg-transparent print:text-slate-800`}
-                          >
-                            {t.categoria || 'Sem categoria'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-slate-600 text-sm">{t.unidade}</TableCell>
-                        <TableCell
+                      return (
+                        <TableRow
+                          key={t.id}
                           className={cn(
-                            'text-right font-mono font-medium whitespace-nowrap',
-                            t.tipo === 'receita' ? 'text-emerald-600' : 'text-red-600',
+                            'transition-colors',
+                            isHighlighted
+                              ? 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-500'
+                              : 'hover:bg-slate-50/50',
                           )}
                         >
-                          {t.tipo === 'receita' ? '+' : '-'} {formatCurrency(Number(t.valor))}
+                          <TableCell className="text-sm text-slate-600 whitespace-nowrap">
+                            {format(new Date(t.data), 'dd/MM/yyyy', { locale: ptBR })}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-slate-800">{t.descricao}</div>
+                            {t.observacoes && (
+                              <div
+                                className="text-xs text-slate-500 mt-0.5 line-clamp-1 print:line-clamp-none"
+                                title={t.observacoes}
+                              >
+                                {t.observacoes}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={`font-medium border-none ${getCategoryColor(t.categoria)} print:border print:border-slate-300 print:bg-transparent print:text-slate-800`}
+                            >
+                              {t.categoria || 'Sem categoria'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-slate-600 text-sm">{t.unidade}</TableCell>
+                          <TableCell
+                            className={cn(
+                              'text-right font-mono font-medium whitespace-nowrap',
+                              t.tipo === 'receita' ? 'text-emerald-600' : 'text-red-600',
+                            )}
+                          >
+                            {t.tipo === 'receita' ? '+' : '-'} {formatCurrency(Number(t.valor))}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                    {filteredTransactions.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                          Nenhum lançamento encontrado para os filtros selecionados.
                         </TableCell>
                       </TableRow>
-                    )
-                  })}
-                  {filteredTransactions.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                        Nenhum lançamento encontrado para os filtros selecionados.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </Tabs>
     </div>
+  )
+}
+
+function DfcReport({ transactions }: { transactions: any[] }) {
+  const getGroupTotal = (categories: string[], isExpense: boolean) => {
+    return ['Jau', 'Pederneiras', 'L. Paulista']
+      .map((unit) => {
+        return transactions
+          .filter(
+            (t) => t.unidade === unit || (t.unidade === 'L. Paulista' && unit === 'L. Paulista'),
+          )
+          .filter((t) => t.tipo === (isExpense ? 'despesa' : 'receita'))
+          .filter((t) => categories.includes(t.categoria))
+          .reduce((sum, t) => sum + Number(t.valor), 0)
+      })
+      .concat(
+        transactions
+          .filter((t) => t.tipo === (isExpense ? 'despesa' : 'receita'))
+          .filter((t) => categories.includes(t.categoria))
+          .reduce((sum, t) => sum + Number(t.valor), 0),
+      )
+  }
+
+  const dfcStructure = [
+    { title: '1. ATIVIDADES OPERACIONAIS', type: 'header' },
+    {
+      title: '1.1 Recebimentos de Vendas para Clientes',
+      isExpense: false,
+      categories: [
+        'Comissões Vendas',
+        'Taxa Adm Locação',
+        'Taxa Contrato Locação',
+        'Taxa Comissão Seguros',
+        'Aluguel',
+      ],
+    },
+    {
+      title: '1.2 Outras Receitas e Deduções',
+      isExpense: false,
+      categories: RECEITAS.filter(
+        (c) =>
+          ![
+            'Comissões Vendas',
+            'Taxa Adm Locação',
+            'Taxa Contrato Locação',
+            'Taxa Comissão Seguros',
+            'Aluguel',
+          ].includes(c),
+      ),
+    },
+    {
+      title: '1.3 Pagamentos Custos Indiretos',
+      isExpense: true,
+      categories: [
+        'Energia Prédio',
+        'Água Prédio',
+        'Estacionamento Empresa',
+        'Aluguel Prédio',
+        'Energia Imóveis',
+        'Água Imóveis',
+        'Condomínio',
+      ],
+    },
+    {
+      title: '1.4 Pagamentos de Impostos',
+      isExpense: true,
+      categories: [
+        'IRRF PJ',
+        'ISSQN',
+        'Simples Nacional',
+        'Parcelamento Simples',
+        'IR',
+        'ITBI e Empreendimentos',
+      ],
+    },
+    {
+      title: '1.5 Pagamentos Trabalhistas',
+      isExpense: true,
+      categories: DESPESAS_FIXAS.filter((c) => c.startsWith('Folha')).concat(
+        'Segurança do Trabalho',
+      ),
+    },
+    {
+      title: '1.6 Despesas com Vendas',
+      isExpense: true,
+      categories: ['Comissões Pagas Vendas', 'Combustível Vendas', 'Comissão Gerência'],
+    },
+    {
+      title: '1.7 Despesas com Marketing',
+      isExpense: true,
+      categories: ['Marketing Digital', 'Marketing Impresso'],
+    },
+    {
+      title: '1.8 Despesas Administrativas',
+      isExpense: true,
+      categories: [
+        'Sistemas e Software',
+        'Internet',
+        'Telefonia Fixa',
+        'Telefonia Móvel',
+        'Honorários Contábeis',
+        'E-mail e Hospedagem',
+      ],
+    },
+    {
+      title: '1.9 Despesas Financeiras',
+      isExpense: true,
+      categories: ['Tarifas Bancárias', 'Tarifa DOC/TED', 'Multa e Juros Bancários', 'Taxa Boleto'],
+    },
+    {
+      title: '1.10 Manutenções',
+      isExpense: true,
+      categories: ['Manutenção Equipamentos', 'Manutenção Sistemas', 'Manutenções Imóveis'],
+    },
+    {
+      title: '1.11 Serviços de Terceiros',
+      isExpense: true,
+      categories: ['Serviços Terceiros'],
+    },
+    { title: '2. ATIVIDADES DE INVESTIMENTOS', type: 'header' },
+    {
+      title: '2.1 Aquisição de Ativos',
+      isExpense: true,
+      categories: ['Aquisição Ativo'],
+    },
+    { title: '3. ATIVIDADES DE FINANCIAMENTOS', type: 'header' },
+    {
+      title: '3.1 Recebimento de Empréstimos',
+      isExpense: false,
+      categories: ['Outros Créditos'],
+    },
+    {
+      title: '3.2 Pagamentos de Empréstimos',
+      isExpense: true,
+      categories: ['Empréstimo e Financiamento'],
+    },
+  ]
+
+  let totalReceitas = 0
+  let totalDespesas = 0
+
+  const rows = dfcStructure.map((row) => {
+    if (row.type === 'header') return row
+    const vals = getGroupTotal(row.categories as string[], row.isExpense as boolean)
+    if (!row.isExpense) totalReceitas += vals[3]
+    else totalDespesas += vals[3]
+    return { ...row, values: vals }
+  })
+
+  return (
+    <Card className="shadow-sm border-slate-200">
+      <CardHeader className="bg-slate-50/50 pb-4 border-b border-slate-100 flex flex-row items-center gap-2">
+        <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+        <CardTitle className="text-lg text-slate-800">
+          Demonstração dos Fluxos de Caixa (DFC)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-slate-100">
+              <TableRow>
+                <TableHead className="w-[350px]">Descrição</TableHead>
+                <TableHead className="text-right">Jaú</TableHead>
+                <TableHead className="text-right">Pederneiras</TableHead>
+                <TableHead className="text-right">Lençóis P.</TableHead>
+                <TableHead className="text-right font-bold bg-slate-200/50">Total (R$)</TableHead>
+                <TableHead className="text-right">A.V. %</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row: any, idx) => {
+                if (row.type === 'header') {
+                  return (
+                    <TableRow
+                      key={idx}
+                      className="bg-slate-50 hover:bg-slate-50 border-t-2 border-slate-200"
+                    >
+                      <TableCell colSpan={6} className="font-bold text-slate-700">
+                        {row.title}
+                      </TableCell>
+                    </TableRow>
+                  )
+                }
+                const isOp = !row.isExpense
+                const totalVal = row.values[3]
+                const av = totalReceitas > 0 ? (totalVal / totalReceitas) * 100 : 0
+
+                return (
+                  <TableRow key={idx}>
+                    <TableCell className="pl-6 text-sm">{row.title}</TableCell>
+                    <TableCell className="text-right text-sm">
+                      {formatCurrency(row.values[0])}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {formatCurrency(row.values[1])}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {formatCurrency(row.values[2])}
+                    </TableCell>
+                    <TableCell
+                      className={`text-right font-medium bg-slate-50/50 ${isOp ? 'text-emerald-600' : 'text-red-600'}`}
+                    >
+                      {isOp ? '+' : '-'} {formatCurrency(totalVal)}
+                    </TableCell>
+                    <TableCell className="text-right text-xs text-slate-500 font-mono">
+                      {av.toFixed(1)}%
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+            <TableFooter className="bg-slate-800 text-white">
+              <TableRow className="hover:bg-slate-800">
+                <TableCell className="font-bold text-base">Resultado Líquido do Período</TableCell>
+                <TableCell colSpan={3}></TableCell>
+                <TableCell
+                  className={`text-right font-bold text-lg ${totalReceitas - totalDespesas >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+                >
+                  {formatCurrency(totalReceitas - totalDespesas)}
+                </TableCell>
+                <TableCell></TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

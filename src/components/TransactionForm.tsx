@@ -11,7 +11,11 @@ import {
   ClassificacaoDespesa,
   ReceitaTipo,
   DespesaTipo,
+  RECEITAS,
+  DESPESAS_FIXAS,
+  DESPESAS_VARIAVEIS,
 } from '@/types'
+import { SelectGroup, SelectLabel } from './ui/select'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -62,8 +66,12 @@ export function TransactionForm() {
   const { teams } = useCommissions()
   const { categories, applyRules } = useSettings()
 
-  const [tipo, setTipo] = useState<'receita' | 'despesa'>('despesa')
-  const [classificacao, setClassificacao] = useState<ClassificacaoDespesa>('variavel')
+  const [formType, setFormType] = useState<'receita' | 'despesa_fixa' | 'despesa_variavel'>(
+    'despesa_variavel',
+  )
+  const tipo = formType === 'receita' ? 'receita' : 'despesa'
+  const classificacao =
+    formType === 'despesa_fixa' ? 'fixo' : formType === 'despesa_variavel' ? 'variavel' : null
   const [receitaTipo, setReceitaTipo] = useState<ReceitaTipo>('outro')
   const [despesaTipo, setDespesaTipo] = useState<DespesaTipo>('unitaria')
   const [categoria, setCategoria] = useState<string>('Outros')
@@ -424,41 +432,38 @@ export function TransactionForm() {
         </CardHeader>
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex bg-slate-100 p-1 rounded-lg">
+            <div className="flex flex-col sm:flex-row bg-slate-100 p-1 rounded-lg gap-1">
               <button
                 type="button"
-                onClick={() => setTipo('receita')}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${tipo === 'receita' ? 'bg-white text-green-600 shadow-sm' : 'text-muted-foreground'}`}
+                onClick={() => {
+                  setFormType('receita')
+                  setCategoria('Outros Créditos')
+                }}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formType === 'receita' ? 'bg-white text-emerald-600 shadow-sm' : 'text-muted-foreground'}`}
               >
                 Receita
               </button>
               <button
                 type="button"
-                onClick={() => setTipo('despesa')}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${tipo === 'despesa' ? 'bg-white text-red-600 shadow-sm' : 'text-muted-foreground'}`}
+                onClick={() => {
+                  setFormType('despesa_fixa')
+                  setCategoria('Outros Débitos')
+                }}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formType === 'despesa_fixa' ? 'bg-white text-indigo-600 shadow-sm' : 'text-muted-foreground'}`}
               >
-                Despesa
+                Despesa Fixa
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFormType('despesa_variavel')
+                  setCategoria('Outros Débitos')
+                }}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formType === 'despesa_variavel' ? 'bg-white text-amber-600 shadow-sm' : 'text-muted-foreground'}`}
+              >
+                Despesa Variável
               </button>
             </div>
-
-            {tipo === 'despesa' && !isCheckpoint && (
-              <div className="flex bg-slate-50 border border-slate-100 p-1 rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setClassificacao('fixo')}
-                  className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${classificacao === 'fixo' ? 'bg-white text-indigo-600 shadow-sm' : 'text-muted-foreground'}`}
-                >
-                  Custo Fixo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setClassificacao('variavel')}
-                  className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${classificacao === 'variavel' ? 'bg-white text-amber-600 shadow-sm' : 'text-muted-foreground'}`}
-                >
-                  Custo Variável
-                </button>
-              </div>
-            )}
 
             {tipo === 'receita' && !isCheckpoint && (
               <div className="flex bg-slate-50 border border-slate-100 p-1 rounded-lg">
@@ -767,13 +772,29 @@ export function TransactionForm() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories
-                      .filter((c) => c && typeof c === 'string' && c.trim() !== '')
-                      .map((c) => (
+                    <SelectGroup>
+                      <SelectLabel className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                        {formType === 'receita'
+                          ? 'Receitas'
+                          : formType === 'despesa_fixa'
+                            ? 'Despesas Fixas'
+                            : 'Despesas Variáveis'}
+                      </SelectLabel>
+                      {(formType === 'receita'
+                        ? RECEITAS
+                        : formType === 'despesa_fixa'
+                          ? DESPESAS_FIXAS
+                          : DESPESAS_VARIAVEIS
+                      ).map((c) => (
                         <SelectItem key={c} value={c}>
                           {c}
                         </SelectItem>
                       ))}
+                      {categoria &&
+                        ![...RECEITAS, ...DESPESAS_FIXAS, ...DESPESAS_VARIAVEIS].includes(
+                          categoria,
+                        ) && <SelectItem value={categoria}>{categoria} (Legado)</SelectItem>}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>

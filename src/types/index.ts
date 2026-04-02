@@ -85,19 +85,80 @@ export interface CommissionTeam {
   rules: CommissionRule[]
 }
 
-export const CATEGORIES = [
-  'Alimentação',
-  'Transporte',
-  'Casa',
-  'Saúde',
-  'Lazer',
-  'Trabalho',
-  'Impostos',
-  'Fornecedores',
-  'Folha de Pagamento',
-  'Comissão',
-  'Outros',
+export const RECEITAS = [
+  'Aluguel',
+  'Comissões Vendas',
+  'Taxa Adm Locação',
+  'Taxa Contrato Locação',
+  'Taxa Comissão Seguros',
+  'Multa por Atraso',
+  'Juros por Atraso',
+  'Antecipação de Aluguel',
+  'Acordos e Distrato',
+  'Atualização Monetária',
+  'Manutenção Cobrada',
+  'Seguro Fiança',
+  'Taxa de Emissão',
+  'Honorários AdmFin',
+  'Honorários Advocatícios',
+  'Custas Judiciais',
+  'Água Imóveis',
+  'Condomínio',
+  'Energia Imóveis',
+  'Estacionamento Convênio',
+  'Rendimentos Aplicação',
+  'Outros Créditos',
 ]
+
+export const DESPESAS_FIXAS = [
+  'Folha - Administrativo',
+  'Folha - Locação',
+  'Folha - Vendas',
+  'Folha - Lençóis',
+  'Folha - Pederneiras',
+  'Segurança do Trabalho',
+  'Aluguel Prédio',
+  'Energia Prédio',
+  'Água Prédio',
+  'Estacionamento Empresa',
+  'Internet',
+  'Telefonia Fixa',
+  'Telefonia Móvel',
+  'E-mail e Hospedagem',
+  'Sistemas e Software',
+  'Honorários Contábeis',
+  'Manutenção Equipamentos',
+  'Manutenção Sistemas',
+]
+
+export const DESPESAS_VARIAVEIS = [
+  'Comissões Pagas Vendas',
+  'Comissão Gerência',
+  'IRRF PJ',
+  'ISSQN',
+  'Simples Nacional',
+  'Parcelamento Simples',
+  'IR',
+  'ITBI e Empreendimentos',
+  'Combustível Vendas',
+  'Combustível Locação',
+  'Combustível Pederneiras',
+  'Combustível Lençóis',
+  'Viagens e Estadias',
+  'Tarifas Bancárias',
+  'Tarifa DOC/TED',
+  'Multa e Juros Bancários',
+  'Taxa Boleto',
+  'Marketing Digital',
+  'Marketing Impresso',
+  'Serviços Terceiros',
+  'Manutenções Imóveis',
+  'Empréstimo e Financiamento',
+  'Aquisição Ativo',
+  'Outros Débitos',
+]
+
+export const CATEGORIES = [...RECEITAS, ...DESPESAS_FIXAS, ...DESPESAS_VARIAVEIS]
 
 export const UNIDADES: Unidade[] = ['Jau', 'Pederneiras', 'L. Paulista', 'Silvio', 'Geral']
 

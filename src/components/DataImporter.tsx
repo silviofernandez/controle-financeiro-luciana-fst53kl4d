@@ -193,8 +193,114 @@ export function DataImporter() {
       }
 
       if (valor > 0 && desc) {
-        const autoTags = applyRules(desc)
         const isBalance = desc.toLowerCase().includes('saldo financeiro')
+        let suggestedCategory = 'Outros'
+        const lowerDesc = desc.toLowerCase()
+
+        if (lowerDesc.includes('comissão venda') || lowerDesc.includes('comissao venda'))
+          suggestedCategory = 'Comissões Vendas'
+        else if (
+          lowerDesc.includes('pagamento comissões') ||
+          lowerDesc.includes('pagamento comissao') ||
+          lowerDesc.includes('comissao paga')
+        )
+          suggestedCategory = 'Comissões Pagas Vendas'
+        else if (lowerDesc.includes('taxa de adm') || lowerDesc.includes('taxa adm'))
+          suggestedCategory = 'Taxa Adm Locação'
+        else if (lowerDesc.includes('taxa contrato')) suggestedCategory = 'Taxa Contrato Locação'
+        else if (lowerDesc.includes('seguro')) suggestedCategory = 'Taxa Comissão Seguros'
+        else if (
+          lowerDesc.includes('energia') ||
+          lowerDesc.includes('cpfl') ||
+          lowerDesc.includes('elektro')
+        )
+          suggestedCategory = 'Energia Prédio'
+        else if (
+          lowerDesc.includes('agua') ||
+          lowerDesc.includes('água') ||
+          lowerDesc.includes('sabesp') ||
+          lowerDesc.includes('sae')
+        )
+          suggestedCategory = 'Água Prédio'
+        else if (
+          lowerDesc.includes('vivo') ||
+          lowerDesc.includes('claro') ||
+          lowerDesc.includes('tim') ||
+          lowerDesc.includes('celular')
+        )
+          suggestedCategory = 'Telefonia Móvel'
+        else if (lowerDesc.includes('telefone') || lowerDesc.includes('embratel'))
+          suggestedCategory = 'Telefonia Fixa'
+        else if (
+          lowerDesc.includes('internet') ||
+          lowerDesc.includes('net') ||
+          lowerDesc.includes('desktop') ||
+          lowerDesc.includes('fibra')
+        )
+          suggestedCategory = 'Internet'
+        else if (lowerDesc.includes('aluguel') && finalType === 'despesa')
+          suggestedCategory = 'Aluguel Prédio'
+        else if (lowerDesc.includes('aluguel') && finalType === 'receita')
+          suggestedCategory = 'Aluguel'
+        else if (
+          lowerDesc.includes('folha') ||
+          lowerDesc.includes('salario') ||
+          lowerDesc.includes('salário') ||
+          lowerDesc.includes('adiantamento')
+        )
+          suggestedCategory = 'Folha - Administrativo'
+        else if (
+          lowerDesc.includes('imposto') ||
+          lowerDesc.includes('das') ||
+          lowerDesc.includes('simples')
+        )
+          suggestedCategory = 'Simples Nacional'
+        else if (
+          lowerDesc.includes('combustivel') ||
+          lowerDesc.includes('combustível') ||
+          lowerDesc.includes('posto') ||
+          lowerDesc.includes('gasolina') ||
+          lowerDesc.includes('etanol')
+        )
+          suggestedCategory = 'Combustível Vendas'
+        else if (
+          lowerDesc.includes('marketing') ||
+          lowerDesc.includes('faceads') ||
+          lowerDesc.includes('google ads') ||
+          lowerDesc.includes('meta ads') ||
+          lowerDesc.includes('instagram')
+        )
+          suggestedCategory = 'Marketing Digital'
+        else if (
+          lowerDesc.includes('grafica') ||
+          lowerDesc.includes('gráfica') ||
+          lowerDesc.includes('panfleto') ||
+          lowerDesc.includes('banner')
+        )
+          suggestedCategory = 'Marketing Impresso'
+        else if (lowerDesc.includes('tarifa') || lowerDesc.includes('manutencao conta'))
+          suggestedCategory = 'Tarifas Bancárias'
+        else if (
+          lowerDesc.includes('ted') ||
+          lowerDesc.includes('doc') ||
+          lowerDesc.includes('pix')
+        )
+          suggestedCategory = 'Tarifa DOC/TED'
+        else if (lowerDesc.includes('multa')) suggestedCategory = 'Multa e Juros Bancários'
+        else if (
+          lowerDesc.includes('software') ||
+          lowerDesc.includes('sistema') ||
+          lowerDesc.includes('assinatura')
+        )
+          suggestedCategory = 'Sistemas e Software'
+        else if (
+          lowerDesc.includes('contabilidade') ||
+          lowerDesc.includes('contador') ||
+          lowerDesc.includes('honorario contabil')
+        )
+          suggestedCategory = 'Honorários Contábeis'
+
+        const autoTags = applyRules(desc)
 
         parsed.push({
           descricao: desc,
@@ -204,7 +310,7 @@ export function DataImporter() {
           banco: (autoTags.banco as Banco) || guessBank(desc),
           tipo: isBalance ? 'receita' : finalType,
           isCheckpoint: isBalance,
-          categoria: autoTags.categoria || 'Outros',
+          categoria: autoTags.categoria || suggestedCategory,
         })
       }
     }

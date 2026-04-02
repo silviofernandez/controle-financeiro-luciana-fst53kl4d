@@ -270,26 +270,6 @@ export const getMockData = (): Transaction[] => {
     },
   ]
 
-  const febParsed = rawFebData
-    .split('\n')
-    .filter(Boolean)
-    .map((line, i) => {
-      const [dateStr, und, valStr, desc, tipo, classif, isChk] = line.split('|')
-      const [day, month] = dateStr.trim().split('/')
-      return {
-        id: `feb-${i}`,
-        tipo: tipo as TransactionType,
-        descricao: desc.trim(),
-        valor: parseFloat(valStr),
-        data: `2026-${month}-${day}T10:00:00.000Z`,
-        categoria: 'Outros',
-        unidade: und as Unidade,
-        banco: guessBank(desc),
-        classificacao: classif ? (classif as ClassificacaoDespesa) : null,
-        isCheckpoint: isChk === 'true',
-        created_at: new Date().toISOString(),
-      }
-    })
-
-  return [...janData, ...marginData, ...ciaData, ...febParsed]
+  // Retorna array vazio para iniciar ambiente limpo de produção
+  return []
 }

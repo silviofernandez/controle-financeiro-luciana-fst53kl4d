@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Landmark, Loader2, Eye, EyeOff } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
-import { extractFieldErrors } from '@/lib/pocketbase/errors'
+import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
 
 export default function Register() {
   const [email, setEmail] = useState('')
@@ -16,11 +16,13 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const { signUp } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFieldErrors({})
 
     if (!email || !password || !confirmPassword) {
       toast({ title: 'Erro', description: 'Preencha todos os campos.', variant: 'destructive' })
@@ -38,14 +40,28 @@ export default function Register() {
       toast({ title: 'Sucesso!', description: 'Conta criada com sucesso.' })
       navigate('/')
     } catch (error: any) {
-      const fieldErrors = extractFieldErrors(error)
-      let description = 'Ocorreu um erro ao criar a conta.'
+      let currentFieldErrors = extractFieldErrors(error)
 
-      if (fieldErrors.email) {
-        description = 'Este e-mail já está cadastrado. Tente fazer login.'
-      } else if (fieldErrors.password) {
-        description = fieldErrors.password
-      } else if (error.message) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const pbError = error as any
+        if (pbError.response?.data?.email?.code === 'validation_not_unique') {
+          currentFieldErrors = { ...currentFieldErrors, email: 'Este e-mail já está em uso.' }
+        }
+      }
+
+      setFieldErrors(currentFieldErrors)
+
+      if (Object.keys(currentFieldErrors).length > 0) {
+        toast({
+          title: 'Dados inválidos',
+          description: 'Verifique os campos destacados no formulário.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      let description = 'Ocorreu um erro ao criar a conta.'
+      if (error.message) {
         description =
           error.message === 'Failed to create record.'
             ? 'Não foi possível criar o registro. Verifique os dados informados e tente novamente.'
@@ -81,27 +97,42 @@ export default function Register() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className={fieldErrors.email ? 'text-red-500' : ''}>
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="seu@email.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: '' }))
+                }}
                 required
-                className="bg-white"
+                className={`bg-white ${fieldErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
               />
+              {fieldErrors.email && (
+                <p className="text-sm font-medium text-red-500 animate-fade-in">
+                  {fieldErrors.email}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password" className={fieldErrors.password ? 'text-red-500' : ''}>
+                Senha
+              </Label>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: '' }))
+                  }}
                   required
-                  className="bg-white pr-10"
+                  className={`bg-white pr-10 ${fieldErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                 />
                 <button
                   type="button"
@@ -112,6 +143,11 @@ export default function Register() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p className="text-sm font-medium text-red-500 animate-fade-in">
+                  {fieldErrors.password}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirmar Senha</Label>

@@ -121,6 +121,7 @@ export const DESPESAS_FIXAS = [
   'Folha - Vendas',
   'Folha - Lençóis',
   'Folha - Pederneiras',
+  'Pró-labore',
   'Segurança do Trabalho',
   'Aluguel Prédio',
   'Energia Prédio',

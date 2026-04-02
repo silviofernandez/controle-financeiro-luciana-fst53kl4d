@@ -29,6 +29,16 @@ export const parseValueAndType = (valStr: string) => {
   }
 }
 
+export const applySalaryRule = (desc: string, unit: string): string | null => {
+  const d = desc.toLowerCase()
+  if (d.startsWith('sal ') || d.includes('salário') || d.includes('salario')) {
+    if (unit === 'Jau' || unit === 'Jaú') return 'Folha - Administrativo'
+    if (unit === 'Pederneiras') return 'Folha - Pederneiras'
+    if (unit === 'L. Paulista' || unit === 'Lençóis Paulista') return 'Folha - Lençóis'
+  }
+  return null
+}
+
 export const applyAutoTagging = (desc: string) => {
   const d = desc.toLowerCase()
   if (d.includes('taxa de administração') || d.includes('taxa de administracao'))

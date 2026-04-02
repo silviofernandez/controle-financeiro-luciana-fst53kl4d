@@ -1,156 +1,164 @@
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
-import { Link as LinkIcon, FileText, CheckCircle2 } from 'lucide-react'
+import { FileText, CheckCircle2, UploadCloud } from 'lucide-react'
 
 interface ImportInputProps {
-  onDataParsed: (headers: string[], data: string[][]) => void
+  onDataParsed: (finData: string[][] | null, opData: string[][] | null) => void
 }
 
 export function ImportInput({ onDataParsed }: ImportInputProps) {
-  const [rawText, setRawText] = useState('')
-  const [sheetLink, setSheetLink] = useState('')
-  const [isDragging, setIsDragging] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [finText, setFinText] = useState('')
+  const [opText, setOpText] = useState('')
+  const [isDraggingFin, setIsDraggingFin] = useState(false)
+  const [isDraggingOp, setIsDraggingOp] = useState(false)
 
-  const processRawText = (text: string) => {
+  const finInputRef = useRef<HTMLInputElement>(null)
+  const opInputRef = useRef<HTMLInputElement>(null)
+
+  const parseRawText = (text: string) => {
+    if (!text.trim()) return null
     const lines = text.split('\n').filter((l) => l.trim().length > 0)
-    if (lines.length === 0) {
-      toast({ title: 'Aviso', description: 'Nenhum dado encontrado.', variant: 'destructive' })
-      return
-    }
-
+    if (lines.length === 0) return null
     const separator = lines[0].includes('\t') ? '\t' : lines[0].includes(';') ? ';' : ','
-    const grid = lines.map((l) => l.split(separator).map((c) => c.trim().replace(/^"|"$/g, '')))
-    const headers = grid[0].map((h, i) => h || `Coluna ${i + 1}`)
-
-    onDataParsed(headers, grid)
+    return lines.map((l) => l.split(separator).map((c) => c.trim().replace(/^"|"$/g, '')))
   }
 
-  const handleTextImport = () => {
-    if (!rawText.trim()) {
-      toast({ title: 'Aviso', description: 'Insira os dados.', variant: 'destructive' })
-      return
-    }
-    processRawText(rawText)
-  }
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-      toast({ title: 'Analisando PDF', description: 'Extraindo dados do extrato...' })
-      setTimeout(() => {
-        processRawText(
-          `Data,Valor,Descrição\n01/03/2026,-150.00,Posto Ipiranga\n02/03/2026,-450.25,Supermercado Extra\n05/03/2026,-800.00,Aluguel Sala\n08/03/2026,5000.00,Recebimento Cliente`,
-        )
-        if (fileInputRef.current) fileInputRef.current.value = ''
-      }, 1500)
-      return
-    }
-
+  const handleFile = (file: File, setTarget: (val: string) => void) => {
     const reader = new FileReader()
     reader.onload = (ev) => {
       const text = ev.target?.result as string
-      processRawText(text)
-      toast({ title: 'Arquivo carregado', description: 'Mapeie as colunas para continuar.' })
+      setTarget(text)
+      toast({
+        title: 'Arquivo carregado',
+        description: `Dados de ${file.name} extraídos com sucesso.`,
+      })
     }
     reader.readAsText(file)
-    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const handleLinkImport = () => {
-    if (!sheetLink.includes('docs.google.com/spreadsheets')) {
+  const handleImport = () => {
+    const finData = parseRawText(finText)
+    const opData = parseRawText(opText)
+
+    if (!finData && !opData) {
       toast({
-        title: 'Erro',
-        description: 'Link inválido do Google Sheets.',
+        title: 'Aviso',
+        description: 'Insira os dados em pelo menos uma das fontes.',
         variant: 'destructive',
       })
       return
     }
-    toast({ title: 'Sincronizando', description: 'Buscando dados da planilha...' })
-    setTimeout(() => {
-      processRawText(
-        'Data,Valor,Descrição,Unidade\n02/02/2026,1610.00,Taxa de administração,Geral\n02/02/2026,3758.79,Energia Eletrica,Jau\n03/02/2026,635.74,Honorários Contábeis,L. Paulista',
-      )
-      setSheetLink('')
-    }, 1500)
+
+    onDataParsed(finData, opData)
   }
 
   return (
-    <>
-      <div className="space-y-3">
-        <Label>Importar de Link (Google Sheets)</Label>
-        <div className="flex gap-2">
-          <Input
-            placeholder="https://docs.google.com/spreadsheets/d/..."
-            value={sheetLink}
-            onChange={(e) => setSheetLink(e.target.value)}
-            className="bg-white"
-          />
-          <Button variant="secondary" onClick={handleLinkImport} className="gap-2 shrink-0">
-            <LinkIcon className="w-4 h-4" />
-            Conectar
-          </Button>
+    <div className="flex flex-col h-full space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-0">
+        {/* Fonte 1: Financeiro */}
+        <div className="flex flex-col border border-slate-200 rounded-lg bg-slate-50/50 overflow-hidden">
+          <div className="p-3 bg-blue-50/50 border-b border-blue-100 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-blue-600" />
+            <h3 className="font-semibold text-blue-900 text-sm">Fonte 1: Financeiro (Integrale)</h3>
+          </div>
+          <div className="p-4 flex-1 flex flex-col gap-4">
+            <div
+              className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center transition-colors cursor-pointer ${isDraggingFin ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-100'}`}
+              onDragOver={(e) => {
+                e.preventDefault()
+                setIsDraggingFin(true)
+              }}
+              onDragLeave={() => setIsDraggingFin(false)}
+              onDrop={(e) => {
+                e.preventDefault()
+                setIsDraggingFin(false)
+                const file = e.dataTransfer.files?.[0]
+                if (file) handleFile(file, setFinText)
+              }}
+              onClick={() => finInputRef.current?.click()}
+            >
+              <UploadCloud className="w-6 h-6 text-slate-400 mb-2" />
+              <p className="font-medium text-xs text-slate-600">Arraste um CSV ou clique</p>
+              <input
+                type="file"
+                ref={finInputRef}
+                className="hidden"
+                accept=".csv,.txt"
+                onChange={(e) => {
+                  if (e.target.files?.[0]) handleFile(e.target.files[0], setFinText)
+                }}
+              />
+            </div>
+            <div className="flex-1 flex flex-col gap-2">
+              <Label className="text-xs text-slate-500">Ou cole os dados diretamente</Label>
+              <Textarea
+                placeholder="Data | Valor | Descrição | Categoria..."
+                className="flex-1 resize-none bg-white font-mono text-[10px] min-h-[120px]"
+                value={finText}
+                onChange={(e) => setFinText(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Fonte 2: Operacional */}
+        <div className="flex flex-col border border-slate-200 rounded-lg bg-slate-50/50 overflow-hidden">
+          <div className="p-3 bg-emerald-50/50 border-b border-emerald-100 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-emerald-600" />
+            <h3 className="font-semibold text-emerald-900 text-sm">
+              Fonte 2: Operacional (Luciana)
+            </h3>
+          </div>
+          <div className="p-4 flex-1 flex flex-col gap-4">
+            <div
+              className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center transition-colors cursor-pointer ${isDraggingOp ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:bg-slate-100'}`}
+              onDragOver={(e) => {
+                e.preventDefault()
+                setIsDraggingOp(true)
+              }}
+              onDragLeave={() => setIsDraggingOp(false)}
+              onDrop={(e) => {
+                e.preventDefault()
+                setIsDraggingOp(false)
+                const file = e.dataTransfer.files?.[0]
+                if (file) handleFile(file, setOpText)
+              }}
+              onClick={() => opInputRef.current?.click()}
+            >
+              <UploadCloud className="w-6 h-6 text-slate-400 mb-2" />
+              <p className="font-medium text-xs text-slate-600">Arraste um CSV ou clique</p>
+              <input
+                type="file"
+                ref={opInputRef}
+                className="hidden"
+                accept=".csv,.txt"
+                onChange={(e) => {
+                  if (e.target.files?.[0]) handleFile(e.target.files[0], setOpText)
+                }}
+              />
+            </div>
+            <div className="flex-1 flex flex-col gap-2">
+              <Label className="text-xs text-slate-500">Ou cole os dados diretamente</Label>
+              <Textarea
+                placeholder="Data | Valor | Descrição | Unidade | Pró-labore..."
+                className="flex-1 resize-none bg-white font-mono text-[10px] min-h-[120px]"
+                value={opText}
+                onChange={(e) => setOpText(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div
-          className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center transition-colors cursor-pointer ${isDragging ? 'border-primary bg-primary/5' : 'border-border bg-slate-50/50 hover:bg-slate-50'}`}
-          onDragOver={(e) => {
-            e.preventDefault()
-            setIsDragging(true)
-          }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault()
-            setIsDragging(false)
-            const file = e.dataTransfer.files?.[0]
-            if (file) {
-              const dataTransfer = new DataTransfer()
-              dataTransfer.items.add(file)
-              if (fileInputRef.current) {
-                fileInputRef.current.files = dataTransfer.files
-                handleFileUpload({ target: fileInputRef.current } as any)
-              }
-            }
-          }}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <FileText className="w-8 h-8 text-muted-foreground mb-3" />
-          <p className="font-medium text-sm">Arraste um CSV ou Excel aqui</p>
-          <p className="text-xs text-muted-foreground mt-1">Ou clique para procurar arquivos</p>
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            accept=".csv,.txt,.pdf"
-            onChange={handleFileUpload}
-          />
-        </div>
-
-        <div className="space-y-2 flex flex-col">
-          <Label>Ou cole os dados da planilha diretamente</Label>
-          <Textarea
-            placeholder={`Cole aqui os dados...\n(Data | Valor | Descrição | ...)`}
-            className="flex-1 bg-white font-mono text-xs resize-none min-h-[160px]"
-            value={rawText}
-            onChange={(e) => setRawText(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end pt-4 border-t border-border/50">
-        <Button onClick={handleTextImport} size="lg" className="gap-2 px-8">
+      <div className="flex justify-end pt-4 border-t border-slate-200 shrink-0">
+        <Button onClick={handleImport} size="lg" className="gap-2 px-8">
           <CheckCircle2 className="w-4 h-4" />
-          Avançar para Mapeamento
+          Avançar para Triagem
         </Button>
       </div>
-    </>
+    </div>
   )
 }

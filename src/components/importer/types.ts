@@ -11,10 +11,12 @@ export interface PreviewItem {
   pbType: string
   unit: Unidade
   bank: Banco
+  source: 'Financeiro' | 'Operacional'
   isCheckpoint?: boolean
   triageAction: TriageAction
   splitEmpresaValue?: number
   splitProlaboreValue?: number
   isDuplicate?: boolean
   duplicateOverride?: boolean
+  hasSpecificAlert?: string
 }

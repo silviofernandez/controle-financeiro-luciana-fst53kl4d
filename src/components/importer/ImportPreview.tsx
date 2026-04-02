@@ -20,8 +20,8 @@ import {
 } from '@/components/ui/table'
 import { useTransactions } from '@/contexts/TransactionContext'
 import { toast } from '@/hooks/use-toast'
-import { ArrowLeft, CheckCircle2, Trash2, AlertTriangle, Info } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
+import { ArrowLeft, CheckCircle2, Trash2, AlertTriangle, Info, FileText } from 'lucide-react'
+import { formatCurrency, cn } from '@/lib/utils'
 import { CATEGORIES, UNIDADES, Transaction, Unidade } from '@/types'
 import { PreviewItem, TriageAction } from './types'
 import { getMappings, saveMapping } from '@/services/establishment_mappings'
@@ -36,29 +36,76 @@ interface ImportPreviewProps {
 export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps) {
   const { transactions, addTransactions } = useTransactions()
   const { user } = useAuth()
-  const [localItems, setLocalItems] = useState<PreviewItem[]>(items)
+  const [localItems, setLocalItems] = useState<PreviewItem[]>([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    let mounted = true
     getMappings().then((mappings) => {
-      setLocalItems((prev) =>
-        prev.map((p) => {
+      if (!mounted) return
+      setLocalItems(
+        items.map((p, i, arr) => {
           let updated = { ...p }
+
           const match = mappings.find((m) =>
             p.description.toLowerCase().includes(m.name.toLowerCase()),
           )
-          if (match) {
+          if (match && !updated.category) {
             updated.triageAction = match.last_triage_type
             updated.category = match.suggested_category || p.category
           }
 
+          if (!updated.triageAction && updated.category) {
+            updated.triageAction = 'Empresa'
+          }
+
           const itemDate = new Date(updated.date).getTime()
-          updated.isDuplicate = transactions.some((t) => {
+
+          const isDbDuplicate = transactions.some((t) => {
             if (t.valor !== updated.value) return false
+            if (t.unidade !== updated.unit) return false
             const tDate = new Date(t.data).getTime()
             const diffDays = Math.abs(tDate - itemDate) / (1000 * 60 * 60 * 24)
             return diffDays <= 3
           })
+
+          const isBatchDuplicate = arr.some((other, otherIdx) => {
+            if (i === otherIdx) return false
+            if (other.value !== updated.value) return false
+            if (other.unit !== updated.unit) return false
+            const otherDate = new Date(other.date).getTime()
+            const diffDays = Math.abs(otherDate - itemDate) / (1000 * 60 * 60 * 24)
+            return diffDays <= 3
+          })
+
+          updated.isDuplicate = isDbDuplicate || isBatchDuplicate
+
+          const descLower = updated.description.toLowerCase()
+          if (
+            descLower.includes('sabesp') &&
+            updated.value === 146.68 &&
+            updated.unit === 'Pederneiras'
+          ) {
+            updated.hasSpecificAlert = 'Água Sabesp Pederneiras'
+          } else if (
+            descLower.includes('aluguel') &&
+            updated.value === 2514.8 &&
+            (updated.unit === 'Jaú' || updated.unit === 'Jau')
+          ) {
+            updated.hasSpecificAlert = 'Aluguel Prédio Jaú'
+          } else if (
+            descLower.includes('cpfl') &&
+            updated.value === 629.46 &&
+            (updated.unit === 'L. Paulista' || updated.unit === 'Lençóis Paulista')
+          ) {
+            updated.hasSpecificAlert = 'CPFL Lençóis'
+          } else if (
+            descLower.includes('cpfl') &&
+            updated.value === 873.64 &&
+            updated.unit === 'Pederneiras'
+          ) {
+            updated.hasSpecificAlert = 'CPFL Pederneiras'
+          }
 
           if (updated.triageAction === 'Dividir' && !updated.splitEmpresaValue) {
             updated.splitEmpresaValue = updated.value / 2
@@ -69,6 +116,9 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
         }),
       )
     })
+    return () => {
+      mounted = false
+    }
   }, [transactions, items])
 
   const handleUpdate = (id: string, field: keyof PreviewItem, value: any) => {
@@ -150,7 +200,7 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
           banco: p.bank,
           tipo: 'despesa',
           classificacao: 'fixo',
-          categoria: 'Folha - Administrativo',
+          categoria: 'Pró-labore',
         })
       } else if (p.triageAction === 'Dividir') {
         if (p.splitEmpresaValue && p.splitEmpresaValue > 0) {
@@ -179,7 +229,7 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
             banco: p.bank,
             tipo: 'despesa',
             classificacao: 'fixo',
-            categoria: 'Folha - Administrativo',
+            categoria: 'Pró-labore',
           })
         }
       }
@@ -188,8 +238,7 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
         uniqueMappings.set(p.description, {
           user_id: user.id,
           name: p.description,
-          suggested_category:
-            p.triageAction === 'Pró-labore' ? 'Folha - Administrativo' : p.category,
+          suggested_category: p.triageAction === 'Pró-labore' ? 'Pró-labore' : p.category,
           last_triage_type: p.triageAction,
         })
       }
@@ -214,14 +263,25 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
   return (
     <div className="space-y-4 animate-fade-in flex flex-col h-full">
       <div className="flex justify-between items-center shrink-0">
-        <h3 className="text-sm font-medium">Triagem de Lançamentos</h3>
-        <p className="text-xs text-muted-foreground">{localItems.length} itens encontrados</p>
+        <h3 className="text-sm font-medium">Triagem Inteligente</h3>
+        <div className="flex gap-4">
+          <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded border border-blue-100">
+            Fin: {localItems.filter((i) => i.source === 'Financeiro').length}
+          </span>
+          <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-1 rounded border border-emerald-100">
+            Op: {localItems.filter((i) => i.source === 'Operacional').length}
+          </span>
+          <span className="text-xs font-medium bg-slate-100 px-2 py-1 rounded border border-slate-200">
+            Total: {localItems.length}
+          </span>
+        </div>
       </div>
       <div className="border rounded-md overflow-x-auto bg-white flex-1 relative">
         <Table>
           <TableHeader className="sticky top-0 bg-slate-50 z-10 shadow-sm">
             <TableRow>
-              <TableHead>Data</TableHead>
+              <TableHead className="w-10">Fonte</TableHead>
+              <TableHead>Data / Unidade</TableHead>
               <TableHead>Descrição</TableHead>
               <TableHead>Valor</TableHead>
               <TableHead>Ação</TableHead>
@@ -230,164 +290,206 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
             </TableRow>
           </TableHeader>
           <TableBody>
-            {localItems.map((item) => (
-              <TableRow
-                key={item.id}
-                className={item.triageAction === 'Já lançado' ? 'opacity-50 bg-slate-50' : ''}
-              >
-                <TableCell className="whitespace-nowrap text-xs">
-                  {new Date(item.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                </TableCell>
-                <TableCell className="max-w-[200px] text-xs">
-                  <div className="truncate font-medium" title={item.description}>
-                    {item.description}
-                  </div>
-                  {item.isDuplicate && item.triageAction !== 'Já lançado' && (
-                    <div className="flex items-center gap-1.5 mt-1 text-amber-600 bg-amber-50 p-1.5 rounded-sm w-fit border border-amber-100">
-                      <AlertTriangle className="w-3 h-3" />
-                      <span className="text-[10px] font-medium leading-none mt-[1px]">
-                        Possível duplicidade
-                      </span>
-                      <div className="flex items-center gap-1 ml-2 border-l border-amber-200/80 pl-2">
-                        <Checkbox
-                          id={`ov-${item.id}`}
-                          className="h-3 w-3 rounded-[2px]"
-                          checked={!!item.duplicateOverride}
-                          onCheckedChange={(c) => handleUpdate(item.id, 'duplicateOverride', !!c)}
-                        />
-                        <Label
-                          htmlFor={`ov-${item.id}`}
-                          className="text-[9px] cursor-pointer mt-[1px]"
-                        >
-                          Ignorar alerta
-                        </Label>
-                      </div>
-                    </div>
+            {localItems.map((item) => {
+              const isDupe =
+                item.isDuplicate && !item.duplicateOverride && item.triageAction !== 'Já lançado'
+              return (
+                <TableRow
+                  key={item.id}
+                  className={cn(
+                    item.triageAction === 'Já lançado' ? 'opacity-50 bg-slate-50' : '',
+                    isDupe ? 'bg-amber-50 hover:bg-amber-100 border-l-4 border-amber-400' : '',
                   )}
-                </TableCell>
-                <TableCell className="whitespace-nowrap font-medium text-xs">
-                  {formatCurrency(item.value)}
-                </TableCell>
-                <TableCell>
-                  <Select
-                    value={item.triageAction || ''}
-                    onValueChange={(v: TriageAction) => handleUpdate(item.id, 'triageAction', v)}
-                  >
-                    <SelectTrigger
-                      className={`w-[130px] h-8 text-xs ${!item.triageAction ? 'border-primary shadow-sm ring-1 ring-primary/20' : ''}`}
+                >
+                  <TableCell>
+                    {item.source === 'Financeiro' ? (
+                      <div
+                        className="w-6 h-6 rounded bg-blue-100 flex items-center justify-center text-blue-600"
+                        title="Financeiro (Integrale)"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                      </div>
+                    ) : (
+                      <div
+                        className="w-6 h-6 rounded bg-emerald-100 flex items-center justify-center text-emerald-600"
+                        title="Operacional (Luciana)"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-xs">
+                    <div>
+                      {new Date(item.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5 font-medium">
+                      {item.unit}
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-[200px] text-xs">
+                    <div className="truncate font-medium text-slate-800" title={item.description}>
+                      {item.description}
+                    </div>
+                    {item.hasSpecificAlert && (
+                      <div className="flex items-center gap-1 mt-1 text-red-600 bg-red-100 p-1 rounded-sm w-fit border border-red-200">
+                        <AlertTriangle className="w-3 h-3" />
+                        <span className="text-[10px] font-bold leading-none mt-[1px]">
+                          ALERTA: {item.hasSpecificAlert}
+                        </span>
+                      </div>
+                    )}
+                    {isDupe && (
+                      <div className="flex items-center gap-1.5 mt-1 text-amber-700 bg-amber-200/40 p-1.5 rounded-sm w-fit border border-amber-200">
+                        <AlertTriangle className="w-3 h-3" />
+                        <span className="text-[10px] font-medium leading-none mt-[1px]">
+                          Possível duplicidade
+                        </span>
+                        <div className="flex items-center gap-1 ml-2 border-l border-amber-300 pl-2">
+                          <Checkbox
+                            id={`ov-${item.id}`}
+                            className="h-3 w-3 rounded-[2px] border-amber-500 data-[state=checked]:bg-amber-600"
+                            checked={!!item.duplicateOverride}
+                            onCheckedChange={(c) => handleUpdate(item.id, 'duplicateOverride', !!c)}
+                          />
+                          <Label
+                            htmlFor={`ov-${item.id}`}
+                            className="text-[9px] cursor-pointer mt-[1px] text-amber-800 font-semibold"
+                          >
+                            Ignorar alerta
+                          </Label>
+                        </div>
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap font-bold text-xs">
+                    {formatCurrency(item.value)}
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={item.triageAction || ''}
+                      onValueChange={(v: TriageAction) => handleUpdate(item.id, 'triageAction', v)}
                     >
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Empresa">Empresa</SelectItem>
-                      <SelectItem value="Pró-labore">Pró-labore</SelectItem>
-                      <SelectItem value="Dividir">Dividir</SelectItem>
-                      <SelectItem value="Já lançado">Já lançado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell className="min-w-[280px]">
-                  {item.triageAction === 'Empresa' && (
-                    <div className="flex gap-2">
-                      <Select
-                        value={item.category}
-                        onValueChange={(v) => handleUpdate(item.id, 'category', v)}
+                      <SelectTrigger
+                        className={`w-[130px] h-8 text-xs ${!item.triageAction ? 'border-primary shadow-sm ring-1 ring-primary/20' : ''}`}
                       >
-                        <SelectTrigger className="h-8 text-xs flex-1">
-                          <SelectValue placeholder="Categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CATEGORIES.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={item.unit}
-                        onValueChange={(v: Unidade) => handleUpdate(item.id, 'unit', v)}
-                      >
-                        <SelectTrigger className="h-8 text-xs w-[100px]">
-                          <SelectValue placeholder="Unidade" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {UNIDADES.map((u) => (
-                            <SelectItem key={u} value={u}>
-                              {u}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  {item.triageAction === 'Pró-labore' && (
-                    <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-md border border-slate-200">
-                      <Info className="w-3.5 h-3.5" />
-                      Despesa Fixa / Folha - Administrativo
-                    </div>
-                  )}
-                  {item.triageAction === 'Dividir' && (
-                    <div className="flex gap-3 items-center bg-slate-50 p-1.5 rounded-md border border-slate-100">
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-[9px] uppercase tracking-wider text-muted-foreground ml-1">
-                          Empresa
-                        </Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          className="h-7 text-xs bg-white"
-                          value={item.splitEmpresaValue || 0}
-                          onChange={(e) => {
-                            const val = Math.max(0, Number(e.target.value))
-                            handleUpdate(item.id, 'splitEmpresaValue', val)
-                            handleUpdate(
-                              item.id,
-                              'splitProlaboreValue',
-                              Math.max(0, item.value - val),
-                            )
-                          }}
-                        />
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Empresa">Empresa</SelectItem>
+                        <SelectItem value="Pró-labore">Pró-labore</SelectItem>
+                        <SelectItem value="Dividir">Dividir</SelectItem>
+                        <SelectItem value="Já lançado">Já lançado (Ignorar)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="min-w-[280px]">
+                    {item.triageAction === 'Empresa' && (
+                      <div className="flex gap-2">
+                        <Select
+                          value={item.category}
+                          onValueChange={(v) => handleUpdate(item.id, 'category', v)}
+                        >
+                          <SelectTrigger
+                            className={cn(
+                              'h-8 text-xs flex-1',
+                              !item.category && 'border-red-300 ring-1 ring-red-200',
+                            )}
+                          >
+                            <SelectValue placeholder="Categoria..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CATEGORIES.map((c) => (
+                              <SelectItem key={c} value={c}>
+                                {c}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={item.unit}
+                          onValueChange={(v: Unidade) => handleUpdate(item.id, 'unit', v)}
+                        >
+                          <SelectTrigger className="h-8 text-xs w-[100px]">
+                            <SelectValue placeholder="Unidade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {UNIDADES.map((u) => (
+                              <SelectItem key={u} value={u}>
+                                {u}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-[9px] uppercase tracking-wider text-muted-foreground ml-1">
-                          Pró-labore
-                        </Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          className="h-7 text-xs bg-white"
-                          value={item.splitProlaboreValue || 0}
-                          onChange={(e) => {
-                            const val = Math.max(0, Number(e.target.value))
-                            handleUpdate(item.id, 'splitProlaboreValue', val)
-                            handleUpdate(
-                              item.id,
-                              'splitEmpresaValue',
-                              Math.max(0, item.value - val),
-                            )
-                          }}
-                        />
+                    )}
+                    {item.triageAction === 'Pró-labore' && (
+                      <div className="text-[11px] text-emerald-800 font-medium flex items-center gap-1.5 bg-emerald-50 p-1.5 rounded-md border border-emerald-200">
+                        <Info className="w-3.5 h-3.5" />
+                        Pró-labore (Despesa Fixa)
                       </div>
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                    onClick={() => handleDelete(item.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+                    )}
+                    {item.triageAction === 'Dividir' && (
+                      <div className="flex gap-3 items-center bg-slate-50 p-1.5 rounded-md border border-slate-100">
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-[9px] uppercase tracking-wider text-muted-foreground ml-1">
+                            Empresa
+                          </Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            className="h-7 text-xs bg-white"
+                            value={item.splitEmpresaValue || 0}
+                            onChange={(e) => {
+                              const val = Math.max(0, Number(e.target.value))
+                              handleUpdate(item.id, 'splitEmpresaValue', val)
+                              handleUpdate(
+                                item.id,
+                                'splitProlaboreValue',
+                                Math.max(0, item.value - val),
+                              )
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-[9px] uppercase tracking-wider text-muted-foreground ml-1">
+                            Pró-labore
+                          </Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            className="h-7 text-xs bg-white"
+                            value={item.splitProlaboreValue || 0}
+                            onChange={(e) => {
+                              const val = Math.max(0, Number(e.target.value))
+                              handleUpdate(item.id, 'splitProlaboreValue', val)
+                              handleUpdate(
+                                item.id,
+                                'splitEmpresaValue',
+                                Math.max(0, item.value - val),
+                              )
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
             {localItems.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  Nenhum item importado.
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  Nenhum item para triagem.
                 </TableCell>
               </TableRow>
             )}

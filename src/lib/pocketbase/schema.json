@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-02T09:51:00.503Z",
+  "generatedAt": "2026-04-02T13:49:50.313Z",
   "collections": [
     {
       "name": "users",
@@ -129,6 +129,62 @@
       ],
       "indexes": [
         "CREATE INDEX idx_transactions_user_type_date ON transactions (user_id, type, date)"
+      ]
+    },
+    {
+      "name": "establishment_mappings",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && user_id = @request.auth.id",
+        "view": "@request.auth.id != '' && user_id = @request.auth.id",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != '' && user_id = @request.auth.id",
+        "delete": "@request.auth.id != '' && user_id = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "suggested_category",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "last_triage_type",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Empresa", "Pró-labore", "Dividir"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_establishment_mappings_user ON establishment_mappings (user_id)"
       ]
     }
   ]

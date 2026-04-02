@@ -32,7 +32,9 @@ import {
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn, formatCurrency, parseCurrency } from '@/lib/utils'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2, Plus, Camera, FileText } from 'lucide-react'
+import { ImportModal } from './importer/ImportModal'
+import { OCRScannerModal } from './OCRScannerModal'
 import { toast } from '@/hooks/use-toast'
 import {
   AlertDialog,
@@ -108,6 +110,9 @@ export function TransactionForm() {
   const [confirmDialogVisible, setConfirmDialogVisible] = useState(false)
   const [summaryModalVisible, setSummaryModalVisible] = useState(false)
   const [summaryData, setSummaryData] = useState<SummaryData[]>([])
+
+  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [ocrModalOpen, setOcrModalOpen] = useState(false)
 
   const wrapperRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -424,11 +429,51 @@ export function TransactionForm() {
     executeSubmit()
   }
 
+  const handleScanComplete = (extracted: any) => {
+    setData(extracted.date)
+    setValorInput(formatCurrency(extracted.amount))
+
+    if (extracted.triageAction === 'Pró-labore') {
+      setFormType('despesa_fixa')
+      setDescricao(`Pró-labore - ${extracted.establishment}`)
+      setCategoria('Folha - Administrativo')
+    } else {
+      setFormType('despesa_variavel')
+      setDescricao(extracted.establishment)
+      if (extracted.suggestedCategory) {
+        setCategoria(extracted.suggestedCategory)
+      }
+    }
+    toast({ title: 'Sucesso', description: 'Dados extraídos do documento com sucesso!' })
+  }
+
   return (
     <>
       <Card className="shadow-md border-blue-100/50">
         <CardHeader className="bg-gradient-to-r from-white to-blue-50/80 pb-4 rounded-t-lg">
-          <CardTitle className="text-lg">Novo Lançamento</CardTitle>
+          <div className="flex justify-between items-center w-full flex-wrap gap-2">
+            <CardTitle className="text-lg">Novo Lançamento</CardTitle>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs bg-white shadow-sm"
+                onClick={() => setOcrModalOpen(true)}
+              >
+                <Camera className="w-3 h-3 mr-1.5" /> Ler Doc
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs bg-white shadow-sm"
+                onClick={() => setImportModalOpen(true)}
+              >
+                <FileText className="w-3 h-3 mr-1.5" /> Importar
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -914,6 +959,13 @@ export function TransactionForm() {
         data={summaryData}
         onConfirm={handleConfirmCommission}
         loading={loading}
+      />
+
+      <ImportModal open={importModalOpen} onOpenChange={setImportModalOpen} />
+      <OCRScannerModal
+        open={ocrModalOpen}
+        onOpenChange={setOcrModalOpen}
+        onScanComplete={handleScanComplete}
       />
     </>
   )

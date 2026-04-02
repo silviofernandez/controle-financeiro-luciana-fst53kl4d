@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
+import pb from '@/lib/pocketbase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +12,6 @@ export default function Recovery() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const { recoverPassword } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,25 +26,17 @@ export default function Recovery() {
 
     setLoading(true)
     try {
-      await recoverPassword(email)
+      await pb.collection('users').requestPasswordReset(email)
       setSubmitted(true)
-      toast({ title: 'Enviado', description: 'Link de recuperação enviado com sucesso!' })
+      toast({
+        title: 'Enviado',
+        description: 'Recovery email sent! Please check your inbox and spam folder.',
+      })
     } catch (error: any) {
-      let description = 'Falha ao solicitar recuperação.'
-
-      if (
-        error?.status === 400 ||
-        error?.message === 'Failed to authenticate.' ||
-        error?.response?.message === 'Failed to authenticate.'
-      ) {
-        description = 'E-mail não encontrado ou inválido.'
-      } else if (error?.message) {
-        description = error.message
-      }
-
       toast({
         title: 'Erro',
-        description,
+        description:
+          'Failed to send recovery email. Please verify the email address and try again.',
         variant: 'destructive',
       })
     } finally {

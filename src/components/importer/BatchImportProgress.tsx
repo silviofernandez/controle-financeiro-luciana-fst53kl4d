@@ -52,10 +52,10 @@ export function BatchImportProgress({
     batch: PreviewItem[],
     onItemProcessed: (res: ImportResult) => void,
   ) => {
-    const batchResults: ImportResult[] = []
-
-    for (const item of batch) {
-      if (abortControllerRef.current?.signal.aborted) break
+    const promises = batch.map(async (item) => {
+      if (abortControllerRef.current?.signal.aborted) {
+        return { item, success: false, error: 'Cancelado' }
+      }
 
       let res: ImportResult
 
@@ -142,21 +142,21 @@ export function BatchImportProgress({
         }
       }
 
-      batchResults.push(res)
       onItemProcessed(res)
-    }
+      return res
+    })
 
-    return batchResults
+    return Promise.all(promises)
   }
 
-  const runImport = async (itemsToProcess: PreviewItem[]) => {
+  const runImport = async (itemsToProcess: PreviewItem[], initialResults: ImportResult[] = []) => {
     if (processingRef.current) return
     processingRef.current = true
     setIsProcessing(true)
     setIsFinished(false)
     abortControllerRef.current = new AbortController()
 
-    let currentResults: ImportResult[] = [...results.filter((r) => r.success)]
+    let currentResults: ImportResult[] = [...initialResults]
     const BATCH_SIZE = 10
     const total = items.length
 
@@ -165,14 +165,18 @@ export function BatchImportProgress({
 
       const batch = itemsToProcess.slice(i, i + BATCH_SIZE)
 
-      await processBatch(batch, (res) => {
-        currentResults = [...currentResults, res]
-        setResults(currentResults)
-        setProgress(Math.round((currentResults.length / total) * 100))
+      const batchResults = await processBatch(batch, (res) => {
+        setResults((prev) => {
+          const next = [...prev, res]
+          setProgress(Math.round((next.length / total) * 100))
+          return next
+        })
       })
 
+      currentResults = [...currentResults, ...batchResults]
+
       // Mandatory pause between sequential batch processing calls
-      await new Promise((resolve) => setTimeout(resolve, 800))
+      await new Promise((resolve) => setTimeout(resolve, 1500))
 
       if (sessionId) {
         let sessionAttempts = 0
@@ -216,7 +220,7 @@ export function BatchImportProgress({
       setResults([])
       setProgress(0)
       localStorage.setItem('import_in_progress', 'true')
-      runImport(items)
+      runImport(items, [])
     }
 
     return () => {
@@ -229,9 +233,10 @@ export function BatchImportProgress({
 
   const handleRetryFailed = () => {
     const failedItems = results.filter((r) => !r.success).map((r) => r.item)
-    setResults(results.filter((r) => r.success))
-    setProgress(Math.round((results.filter((r) => r.success).length / items.length) * 100))
-    runImport(failedItems)
+    const successItems = results.filter((r) => r.success)
+    setResults(successItems)
+    setProgress(Math.round((successItems.length / items.length) * 100))
+    runImport(failedItems, successItems)
   }
 
   const handleClose = () => {
@@ -279,7 +284,7 @@ export function BatchImportProgress({
                       Aguardando disponibilidade do servidor...
                     </span>
                   ) : (
-                    `Importando ${results.length} de ${totalCount}...`
+                    `Importando ${results.filter((r) => r.success).length} de ${totalCount}...`
                   )}
                 </span>
                 <span>{progress}%</span>
@@ -331,7 +336,7 @@ export function BatchImportProgress({
             <>
               {failedCount > 0 && (
                 <Button variant="outline" onClick={handleRetryFailed}>
-                  Tentar novamente apenas falhas
+                  Tentar novamente apenas os itens com falha
                 </Button>
               )}
               <Button onClick={handleClose}>Concluir</Button>

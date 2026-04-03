@@ -20,7 +20,9 @@ export default function InsertData() {
         if (parsed && parsed.length > 0) {
           setIsBulkOpen(true)
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Failed to parse autosave data', e)
+      }
     }
   }, [])
 

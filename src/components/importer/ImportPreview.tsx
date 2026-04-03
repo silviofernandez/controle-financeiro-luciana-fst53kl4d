@@ -166,11 +166,15 @@ export function ImportPreview({
   const [loading, setLoading] = useState(false)
   const [customCategories, setCustomCategories] = useState<string[]>([])
 
-  const { isSyncing, dirtyIds, markDirty, hasUnsavedChanges } = useImportSync(sessionId, localItems, scrollPos)
+  const { isSyncing, dirtyIds, markDirty, hasUnsavedChanges } = useImportSync(
+    sessionId,
+    localItems,
+    scrollPos,
+  )
 
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname
+      hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname,
   )
 
   useEffect(() => {
@@ -198,86 +202,85 @@ export function ImportPreview({
     getMappings().then((mappings) => {
       if (!mounted) return
       const changedIds: string[] = []
-      
+
       const mappedItems = items.map((p, i, arr) => {
-        items.map((p, i, arr) => {
-          let updated = { ...p }
+        let updated = { ...p }
 
-          const match = mappings.find((m) =>
-            p.description.toLowerCase().includes(m.name.toLowerCase()),
-          )
-          if (match && (!updated.category || updated.category === 'A triar')) {
-            updated.triageAction = match.last_triage_type || 'Empresa'
-            updated.category = match.suggested_category || p.category
-            updated.isSuggestedCategory = true
-          }
+        const match = mappings.find((m) =>
+          p.description.toLowerCase().includes(m.name.toLowerCase()),
+        )
+        if (match && (!updated.category || updated.category === 'A triar')) {
+          updated.triageAction = match.last_triage_type || 'Empresa'
+          updated.category = match.suggested_category || p.category
+          updated.isSuggestedCategory = true
+        }
 
-          if (!updated.triageAction && updated.category && updated.category !== 'A triar') {
-            updated.triageAction = 'Empresa'
-          }
+        if (!updated.triageAction && updated.category && updated.category !== 'A triar') {
+          updated.triageAction = 'Empresa'
+        }
 
-          const itemDate = new Date(updated.date).getTime()
+        const itemDate = new Date(updated.date).getTime()
 
-          const isDbDuplicate = transactions.some((t) => {
-            if (t.valor !== updated.value) return false
-            if (t.unidade !== updated.unit) return false
-            const tDate = new Date(t.data).getTime()
-            const diffDays = Math.abs(tDate - itemDate) / (1000 * 60 * 60 * 24)
-            return diffDays <= 3
-          })
-
-          const isBatchDuplicate = arr.some((other, otherIdx) => {
-            if (i === otherIdx) return false
-            if (other.value !== updated.value) return false
-            if (other.unit !== updated.unit) return false
-            const otherDate = new Date(other.date).getTime()
-            const diffDays = Math.abs(otherDate - itemDate) / (1000 * 60 * 60 * 24)
-            return diffDays <= 3
-          })
-
-          updated.isDuplicate = isDbDuplicate || isBatchDuplicate
-
-          if (JSON.stringify(updated) !== JSON.stringify(p)) {
-            changedIds.push(updated.id)
-          }
-
-          const descLower = updated.description.toLowerCase()
-          if (
-            descLower.includes('sabesp') &&
-            updated.value === 146.68 &&
-            updated.unit === 'Pederneiras'
-          ) {
-            updated.hasSpecificAlert = 'Água Sabesp Pederneiras'
-          } else if (
-            descLower.includes('aluguel') &&
-            updated.value === 2514.8 &&
-            (updated.unit === 'Jaú' || updated.unit === 'Jau')
-          ) {
-            updated.hasSpecificAlert = 'Aluguel Prédio Jaú'
-          } else if (
-            descLower.includes('cpfl') &&
-            updated.value === 629.46 &&
-            (updated.unit === 'L. Paulista' || updated.unit === 'Lençóis Paulista')
-          ) {
-            updated.hasSpecificAlert = 'CPFL Lençóis'
-          } else if (
-            descLower.includes('cpfl') &&
-            updated.value === 873.64 &&
-            updated.unit === 'Pederneiras'
-          ) {
-            updated.hasSpecificAlert = 'CPFL Pederneiras'
-          }
-
-          if (updated.triageAction === 'Dividir' && !updated.splitEmpresaValue) {
-            updated.splitEmpresaValue = updated.value / 2
-            updated.splitProlaboreValue = updated.value / 2
-          }
-
-          return updated
+        const isDbDuplicate = transactions.some((t) => {
+          if (t.valor !== updated.value) return false
+          if (t.unidade !== updated.unit) return false
+          const tDate = new Date(t.data).getTime()
+          const diffDays = Math.abs(tDate - itemDate) / (1000 * 60 * 60 * 24)
+          return diffDays <= 3
         })
-        
+
+        const isBatchDuplicate = arr.some((other, otherIdx) => {
+          if (i === otherIdx) return false
+          if (other.value !== updated.value) return false
+          if (other.unit !== updated.unit) return false
+          const otherDate = new Date(other.date).getTime()
+          const diffDays = Math.abs(otherDate - itemDate) / (1000 * 60 * 60 * 24)
+          return diffDays <= 3
+        })
+
+        updated.isDuplicate = isDbDuplicate || isBatchDuplicate
+
+        if (JSON.stringify(updated) !== JSON.stringify(p)) {
+          changedIds.push(updated.id)
+        }
+
+        const descLower = updated.description.toLowerCase()
+        if (
+          descLower.includes('sabesp') &&
+          updated.value === 146.68 &&
+          updated.unit === 'Pederneiras'
+        ) {
+          updated.hasSpecificAlert = 'Água Sabesp Pederneiras'
+        } else if (
+          descLower.includes('aluguel') &&
+          updated.value === 2514.8 &&
+          (updated.unit === 'Jaú' || updated.unit === 'Jau')
+        ) {
+          updated.hasSpecificAlert = 'Aluguel Prédio Jaú'
+        } else if (
+          descLower.includes('cpfl') &&
+          updated.value === 629.46 &&
+          (updated.unit === 'L. Paulista' || updated.unit === 'Lençóis Paulista')
+        ) {
+          updated.hasSpecificAlert = 'CPFL Lençóis'
+        } else if (
+          descLower.includes('cpfl') &&
+          updated.value === 873.64 &&
+          updated.unit === 'Pederneiras'
+        ) {
+          updated.hasSpecificAlert = 'CPFL Pederneiras'
+        }
+
+        if (updated.triageAction === 'Dividir' && !updated.splitEmpresaValue) {
+          updated.splitEmpresaValue = updated.value / 2
+          updated.splitProlaboreValue = updated.value / 2
+        }
+
+        return updated
+      })
+
       setLocalItems(mappedItems)
-      changedIds.forEach(id => markDirty(id))
+      changedIds.forEach((id) => markDirty(id))
     })
     return () => {
       mounted = false
@@ -438,7 +441,7 @@ export function ImportPreview({
     for (const mapping of Array.from(uniqueMappings.values())) {
       await saveMapping(mapping)
     }
-    
+
     if (sessionId) {
       await updateImportSession(sessionId, { status: 'Completed', triage_state: localItems })
     }
@@ -666,11 +669,17 @@ export function ImportPreview({
                   </TableCell>
                   <TableCell className="text-center">
                     {dirtyIds.has(item.id) || isSyncing ? (
-                      <div className="w-6 h-6 mx-auto rounded-full bg-amber-100 flex items-center justify-center" title="Salvando...">
+                      <div
+                        className="w-6 h-6 mx-auto rounded-full bg-amber-100 flex items-center justify-center"
+                        title="Salvando..."
+                      >
                         <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
                       </div>
                     ) : (
-                      <div className="w-6 h-6 mx-auto rounded-full bg-emerald-100 flex items-center justify-center" title="Salvo na nuvem">
+                      <div
+                        className="w-6 h-6 mx-auto rounded-full bg-emerald-100 flex items-center justify-center"
+                        title="Salvo na nuvem"
+                      >
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                       </div>
                     )}
@@ -721,7 +730,8 @@ export function ImportPreview({
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
             <h2 className="text-lg font-bold mb-2">Alterações não salvas</h2>
             <p className="text-sm text-slate-600 mb-6">
-              Você tem {dirtyIds.size} itens não confirmados. O salvamento automático ainda está em andamento. Deseja sair mesmo assim e arriscar perder os dados?
+              Você tem {dirtyIds.size} itens não confirmados. O salvamento automático ainda está em
+              andamento. Deseja sair mesmo assim e arriscar perder os dados?
             </p>
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => blocker.reset?.()}>

@@ -234,7 +234,9 @@ export function ImportModal({
     if (sessionId) {
       try {
         await updateImportSession(sessionId, { status: 'Interrupted' })
-      } catch (e) {}
+      } catch (e) {
+        // ignore error
+      }
     }
 
     if (user && conflictItems) {
@@ -248,7 +250,9 @@ export function ImportModal({
           last_position: 0,
         })
         setSessionId(session.id)
-      } catch (e) {}
+      } catch (e) {
+        // ignore error
+      }
     }
 
     setLocalItems([])

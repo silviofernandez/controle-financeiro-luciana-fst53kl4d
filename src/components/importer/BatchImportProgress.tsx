@@ -44,6 +44,7 @@ export function BatchImportProgress({
   const [results, setResults] = useState<ImportResult[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [isFinished, setIsFinished] = useState(false)
+  const [isWaiting, setIsWaiting] = useState(false)
   const abortControllerRef = useRef<AbortController | null>(null)
   const processingRef = useRef(false)
 
@@ -115,19 +116,28 @@ export function BatchImportProgress({
           for (const tx of transactionsToCreate) {
             let attempts = 0
             let saved = false
-            while (attempts < 3 && !saved) {
+            while (attempts < 5 && !saved) {
+              if (abortControllerRef.current?.signal.aborted) break
               try {
                 await pb.collection('transactions').create(tx)
                 saved = true
+                setIsWaiting(false)
               } catch (e: any) {
                 attempts++
-                if (attempts >= 3) throw e
-                await new Promise((resolve) => setTimeout(resolve, 500 * attempts))
+                if (e.status === 429 || e.status === 0) {
+                  setIsWaiting(true)
+                  const delay = 1000 * Math.pow(2, attempts)
+                  await new Promise((resolve) => setTimeout(resolve, delay))
+                } else {
+                  if (attempts >= 3) throw e
+                  await new Promise((resolve) => setTimeout(resolve, 500 * attempts))
+                }
               }
             }
           }
           res = { item, success: true }
         } catch (error) {
+          setIsWaiting(false)
           res = { item, success: false, error: getErrorMessage(error) }
         }
       }
@@ -161,31 +171,51 @@ export function BatchImportProgress({
         setProgress(Math.round((currentResults.length / total) * 100))
       })
 
+      // Mandatory pause between sequential batch processing calls
+      await new Promise((resolve) => setTimeout(resolve, 800))
+
       if (sessionId) {
-        try {
-          const successfulIds = new Set(
-            currentResults.filter((r) => r.success).map((r) => r.item.id),
-          )
-          const remainingTriage = items.filter((it) => !successfulIds.has(it.id))
-          await updateImportSession(sessionId, {
-            triage_state: remainingTriage,
-            status: remainingTriage.length === 0 ? 'Completed' : 'In Progress',
-          })
-        } catch (e) {
-          console.error('Failed to sync session state', e)
+        let sessionAttempts = 0
+        let sessionSaved = false
+        while (sessionAttempts < 3 && !sessionSaved) {
+          try {
+            const successfulIds = new Set(
+              currentResults.filter((r) => r.success).map((r) => r.item.id),
+            )
+            const remainingTriage = items.filter((it) => !successfulIds.has(it.id))
+            await updateImportSession(sessionId, {
+              triage_state: remainingTriage,
+              status: remainingTriage.length === 0 ? 'Completed' : 'In Progress',
+            })
+            sessionSaved = true
+            setIsWaiting(false)
+          } catch (e: any) {
+            sessionAttempts++
+            if (e.status === 429 || e.status === 0) {
+              setIsWaiting(true)
+              const delay = 1000 * Math.pow(2, sessionAttempts)
+              await new Promise((resolve) => setTimeout(resolve, delay))
+            } else {
+              console.error('Failed to sync session state', e)
+              break
+            }
+          }
         }
       }
     }
 
     setIsProcessing(false)
     setIsFinished(true)
+    setIsWaiting(false)
     processingRef.current = false
+    localStorage.removeItem('import_in_progress')
   }
 
   useEffect(() => {
     if (open && items.length > 0 && !isProcessing && !isFinished && !processingRef.current) {
       setResults([])
       setProgress(0)
+      localStorage.setItem('import_in_progress', 'true')
       runImport(items)
     }
 
@@ -193,6 +223,7 @@ export function BatchImportProgress({
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
       }
+      localStorage.removeItem('import_in_progress')
     }
   }, [open, items])
 
@@ -242,7 +273,14 @@ export function BatchImportProgress({
             <div className="space-y-2">
               <div className="flex justify-between text-sm font-medium">
                 <span>
-                  Importando {results.length} de {totalCount}...
+                  {isWaiting ? (
+                    <span className="text-amber-600 flex items-center gap-2">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Aguardando disponibilidade do servidor...
+                    </span>
+                  ) : (
+                    `Importando ${results.length} de ${totalCount}...`
+                  )}
                 </span>
                 <span>{progress}%</span>
               </div>

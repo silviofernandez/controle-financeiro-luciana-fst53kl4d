@@ -20,11 +20,13 @@ export function useImportSync(
   }, [])
 
   useEffect(() => {
-    if (!sessionId || dirtyIds.size === 0) return
+    const isImporting = localStorage.getItem('import_in_progress') === 'true'
+    if (!sessionId || dirtyIds.size === 0 || isImporting) return
 
     if (timerRef.current) clearTimeout(timerRef.current)
 
     timerRef.current = setTimeout(async () => {
+      if (localStorage.getItem('import_in_progress') === 'true') return
       setIsSyncing(true)
       const currentDirty = new Set(dirtyIds)
       try {

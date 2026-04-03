@@ -29,6 +29,7 @@ export function ImportModal({
 
     const processGrid = (data: string[][], source: 'Financeiro' | 'Operacional') => {
       const headers = data[0].map((h) => h.toLowerCase())
+
       const dateIdx = headers.findIndex((h) => h.includes('data') || h.includes('vencimento'))
       const valIdx = headers.findIndex((h) => h.includes('valor') || h.includes('quantia'))
       const descIdx = headers.findIndex(
@@ -41,70 +42,127 @@ export function ImportModal({
         source === 'Financeiro'
           ? headers.findIndex((h) => h.includes('categoria') || h.includes('classificação'))
           : -1
-      const proLaboreIdx =
-        source === 'Operacional'
-          ? headers.findIndex(
-              (h) =>
-                h.includes('pró-labore') || h.includes('pro-labore') || h.includes('pro labore'),
-            )
-          : -1
+      const bankIdx = headers.findIndex((h) => h.includes('banco'))
+
+      const isLucianaFormat =
+        source === 'Operacional' &&
+        headers.some((h) => h.includes('jaú') || h.includes('jau')) &&
+        headers.some((h) => h.includes('pederneiras'))
+
+      let jauIdx = -1,
+        pedIdx = -1,
+        lpIdx = -1,
+        proIdx = -1
+      const genericProLaboreIdx = headers.findIndex(
+        (h) => h.includes('pró-labore') || h.includes('pro-labore') || h.includes('pro labore'),
+      )
+
+      if (isLucianaFormat) {
+        jauIdx = headers.findIndex((h) => h.includes('jaú') || h.includes('jau'))
+        pedIdx = headers.findIndex((h) => h.includes('pederneiras'))
+        lpIdx = headers.findIndex((h) => h.includes('paulista'))
+        proIdx = genericProLaboreIdx
+      }
 
       data.slice(1).forEach((row) => {
+        if (row.every((cell) => !cell.trim())) return
+
         const dateStr = dateIdx >= 0 ? row[dateIdx] : ''
         if (!dateStr) return
 
         let date = dateStr
         if (date.includes('/')) {
           const parts = date.split('/')
-          if (parts.length >= 3) {
-            date = `${parts[2].length === 2 ? '20' + parts[2] : parts[2]}-${parts[1]}-${parts[0]}`
+          if (parts.length === 2) {
+            const currentYear = new Date().getFullYear()
+            date = `${currentYear}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+          } else if (parts.length >= 3) {
+            date = `${parts[2].length === 2 ? '20' + parts[2] : parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
           }
         }
 
-        const valStr = valIdx >= 0 ? row[valIdx] : '0'
-        const { valor, tipo } = parseValueAndType(valStr)
-        if (valor === 0) return
+        const desc = descIdx >= 0 ? row[descIdx]?.trim() : ''
+        if (desc.toUpperCase() === 'SALDO FINANCEIRO') return
 
-        const desc = descIdx >= 0 ? row[descIdx] : ''
-
+        let valor = 0
+        let tipo = 'despesa'
         let unit: Unidade = 'Geral'
-        if (unitIdx >= 0 && row[unitIdx]) {
-          const uRaw = row[unitIdx].trim().toLowerCase()
-          if (uRaw.includes('ja')) unit = 'Jau'
-          else if (uRaw.includes('pederneiras')) unit = 'Pederneiras'
-          else if (uRaw.includes('paulista') || uRaw.includes('len')) unit = 'L. Paulista'
-          else if (uRaw.includes('pró') || uRaw.includes('pro'))
-            unit = 'Pró-labore (Silvio/Luciana)'
-        }
-
-        let category = ''
-        let pbType = tipo === 'receita' ? 'Receita' : 'Despesa Variável'
-
-        if (catIdx >= 0 && row[catIdx]) {
-          category = row[catIdx].trim()
-        }
-
         let isProLabore = false
-        if (proLaboreIdx >= 0 && row[proLaboreIdx]) {
-          const plVal = row[proLaboreIdx].trim().toLowerCase()
-          if (plVal === 'sim' || plVal === 'x' || parseFloat(plVal) > 0) {
+
+        if (isLucianaFormat) {
+          const vJau = parseValueAndType(row[jauIdx] || '0').valor
+          const vPed = parseValueAndType(row[pedIdx] || '0').valor
+          const vLp = parseValueAndType(row[lpIdx] || '0').valor
+          const vPro = parseValueAndType(row[proIdx] || '0').valor
+
+          if (vJau > 0) {
+            valor = vJau
+            unit = 'Jaú'
+          } else if (vPed > 0) {
+            valor = vPed
+            unit = 'Pederneiras'
+          } else if (vLp > 0) {
+            valor = vLp
+            unit = 'Lençóis Paulista'
+          } else if (vPro > 0) {
+            valor = vPro
+            unit = 'Pró-labore (Silvio/Luciana)'
             isProLabore = true
           }
+
+          if (valor === 0) return
+        } else {
+          const valStr = valIdx >= 0 ? row[valIdx] : '0'
+          const parsed = parseValueAndType(valStr)
+          valor = parsed.valor
+          tipo = parsed.tipo
+          if (valor === 0) return
+
+          if (unitIdx >= 0 && row[unitIdx]) {
+            const uRaw = row[unitIdx].trim().toLowerCase()
+            if (uRaw.includes('ja')) unit = 'Jaú'
+            else if (uRaw.includes('pederneiras')) unit = 'Pederneiras'
+            else if (uRaw.includes('paulista') || uRaw.includes('len')) unit = 'Lençóis Paulista'
+            else if (uRaw.includes('pró') || uRaw.includes('pro'))
+              unit = 'Pró-labore (Silvio/Luciana)'
+          }
+
+          if (genericProLaboreIdx >= 0 && row[genericProLaboreIdx]) {
+            const plVal = row[genericProLaboreIdx].trim().toLowerCase()
+            if (plVal === 'sim' || plVal === 'x' || parseFloat(plVal) > 0) {
+              isProLabore = true
+            }
+          }
+        }
+
+        let category = 'A triar'
+        let pbType =
+          source === 'Operacional'
+            ? 'Despesa Variável'
+            : tipo === 'receita'
+              ? 'Receita'
+              : 'Despesa Variável'
+        const bank = bankIdx >= 0 && row[bankIdx] ? guessBank(row[bankIdx]) : guessBank(desc)
+
+        if (catIdx >= 0 && row[catIdx]) {
+          category = row[catIdx].trim() || 'A triar'
         }
 
         if (isProLabore) {
           category = 'Pró-labore'
           pbType = 'Despesa Fixa'
           unit = 'Pró-labore (Silvio/Luciana)'
-        } else {
+        } else if (category === 'A triar') {
           const salCat = applySalaryRule(desc, unit)
           if (salCat) {
             category = salCat
             pbType = 'Despesa Fixa'
-          } else if (!category) {
+          } else {
             const auto = applyAutoTagging(desc)
-            category = auto.category || ''
-            pbType = auto.pbType || pbType
+            if (auto.category) {
+              category = auto.category
+              pbType = auto.pbType || pbType
+            }
           }
         }
 
@@ -116,7 +174,7 @@ export function ImportModal({
           category,
           pbType,
           unit,
-          bank: guessBank(desc),
+          bank,
           source,
           triageAction: null,
           splitEmpresaValue: 0,

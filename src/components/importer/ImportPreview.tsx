@@ -50,7 +50,7 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
           const match = mappings.find((m) =>
             p.description.toLowerCase().includes(m.name.toLowerCase()),
           )
-          if (match && !updated.category) {
+          if (match && (!updated.category || updated.category === 'A triar')) {
             updated.triageAction = match.last_triage_type
             updated.category = match.suggested_category || p.category
           }
@@ -234,7 +234,7 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
         }
       }
 
-      if (user) {
+      if (user && p.triageAction !== 'Já lançado') {
         uniqueMappings.set(p.description, {
           user_id: user.id,
           name: p.description,
@@ -319,9 +319,7 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
                     )}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-xs">
-                    <div>
-                      {new Date(item.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                    </div>
+                    <div>{new Date(item.date + 'T12:00:00').toLocaleDateString('pt-BR')}</div>
                     <div className="text-[10px] text-muted-foreground mt-0.5 font-medium">
                       {item.unit}
                     </div>
@@ -392,12 +390,16 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
                           <SelectTrigger
                             className={cn(
                               'h-8 text-xs flex-1',
-                              !item.category && 'border-red-300 ring-1 ring-red-200',
+                              (!item.category || item.category === 'A triar') &&
+                                'border-amber-400 ring-1 ring-amber-300 bg-amber-50 text-amber-800 font-medium',
                             )}
                           >
                             <SelectValue placeholder="Categoria..." />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="A triar" className="text-amber-600 font-medium">
+                              A triar
+                            </SelectItem>
                             {CATEGORIES.map((c) => (
                               <SelectItem key={c} value={c}>
                                 {c}

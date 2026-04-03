@@ -1,6 +1,7 @@
 import { Banco } from '@/types'
 
 export const guessBank = (desc: string): Banco => {
+  if (!desc) return 'Outros'
   const d = desc.toLowerCase()
   if (d.includes('santander')) return 'Santander'
   if (d.includes('inter')) return 'Inter'

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-03T16:02:42.094Z",
+  "generatedAt": "2026-04-03T20:21:30.742Z",
   "collections": [
     {
       "name": "users",
@@ -233,6 +233,72 @@
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_details_user_name ON details (user_id, name)"]
+    },
+    {
+      "name": "import_sessions",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && user_id = @request.auth.id",
+        "view": "@request.auth.id != '' && user_id = @request.auth.id",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != '' && user_id = @request.auth.id",
+        "delete": "@request.auth.id != '' && user_id = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "file_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["In Progress", "Completed", "Interrupted"]
+        },
+        {
+          "name": "raw_data",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "triage_state",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "last_position",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
     }
   ]
 }

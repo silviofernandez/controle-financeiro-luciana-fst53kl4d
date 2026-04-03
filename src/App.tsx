@@ -13,6 +13,7 @@ import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import InsertData from './pages/InsertData'
 import Audit from './pages/Audit'
+import Imports from './pages/Imports'
 
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -68,6 +69,7 @@ const AppRoutes = () => (
       <Route path="/margem-contribuicao" element={<ContributionMargin />} />
       <Route path="/custos-operacionais" element={<OperatingCosts />} />
       <Route path="/comissoes" element={<Commissions />} />
+      <Route path="/importacoes" element={<Imports />} />
       <Route path="/auditoria" element={<Audit />} />
       <Route path="/configuracoes" element={<Settings />} />
     </Route>

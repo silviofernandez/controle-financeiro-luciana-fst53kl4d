@@ -23,6 +23,8 @@ import { applyAutoTagging, parseValueAndType, guessBank, applySalaryRule } from 
 import { Unidade } from '@/types'
 import { useNavigate } from 'react-router-dom'
 import { usePersistentState } from '@/hooks/use-persistent-state'
+import { useAuth } from '@/contexts/AuthContext'
+import { createImportSession, updateImportSession } from '@/services/import_sessions'
 
 export function ImportModal({
   open,
@@ -31,8 +33,10 @@ export function ImportModal({
   open: boolean
   onOpenChange: (o: boolean) => void
 }) {
+  const { user } = useAuth()
   const [step, setStep] = usePersistentState<1 | 2>('importer_step', 1)
   const [localItems, setLocalItems] = usePersistentState<PreviewItem[]>('importer_localItems', [])
+  const [sessionId, setSessionId] = usePersistentState<string | null>('importer_sessionId', null)
   const [items, setItems] = useState<PreviewItem[]>([])
 
   const [conflictItems, setConflictItems] = useState<PreviewItem[] | null>(null)
@@ -211,10 +215,42 @@ export function ImportModal({
     } else {
       setItems(allItems)
       setStep(2)
+      if (user) {
+        createImportSession({
+          user_id: user.id,
+          file_name: `Importação ${new Date().toLocaleDateString('pt-BR')}`,
+          status: 'In Progress',
+          raw_data: allItems,
+          triage_state: allItems,
+          last_position: 0,
+        })
+          .then((session) => setSessionId(session.id))
+          .catch(console.error)
+      }
     }
   }
 
-  const handleDiscardAndStartNew = () => {
+  const handleDiscardAndStartNew = async () => {
+    if (sessionId) {
+      try {
+        await updateImportSession(sessionId, { status: 'Interrupted' })
+      } catch (e) {}
+    }
+
+    if (user && conflictItems) {
+      try {
+        const session = await createImportSession({
+          user_id: user.id,
+          file_name: `Importação ${new Date().toLocaleDateString('pt-BR')}`,
+          status: 'In Progress',
+          raw_data: conflictItems,
+          triage_state: conflictItems,
+          last_position: 0,
+        })
+        setSessionId(session.id)
+      } catch (e) {}
+    }
+
     setLocalItems([])
     if (conflictItems) {
       setItems(conflictItems)
@@ -261,6 +297,8 @@ export function ImportModal({
                 items={items}
                 localItems={localItems}
                 setLocalItems={setLocalItems}
+                sessionId={sessionId}
+                setSessionId={setSessionId}
                 onBack={() => setStep(1)}
                 onComplete={() => {
                   setLocalItems([])

@@ -45,6 +45,10 @@ import { PreviewItem, TriageAction } from './types'
 import { getMappings, saveMapping } from '@/services/establishment_mappings'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePersistentState } from '@/hooks/use-persistent-state'
+import { useBlocker } from 'react-router-dom'
+import { useImportSync } from '@/hooks/use-import-sync'
+import { Clock } from 'lucide-react'
+import { updateImportSession } from '@/services/import_sessions'
 
 function CategoryCombobox({
   value,
@@ -139,6 +143,8 @@ interface ImportPreviewProps {
   items: PreviewItem[]
   localItems: PreviewItem[]
   setLocalItems: React.Dispatch<React.SetStateAction<PreviewItem[]>>
+  sessionId: string | null
+  setSessionId: (id: string | null) => void
   onBack: () => void
   onComplete: () => void
 }
@@ -147,6 +153,8 @@ export function ImportPreview({
   items,
   localItems,
   setLocalItems,
+  sessionId,
+  setSessionId,
   onBack,
   onComplete,
 }: ImportPreviewProps) {
@@ -157,6 +165,24 @@ export function ImportPreview({
 
   const [loading, setLoading] = useState(false)
   const [customCategories, setCustomCategories] = useState<string[]>([])
+
+  const { isSyncing, dirtyIds, markDirty, hasUnsavedChanges } = useImportSync(sessionId, localItems, scrollPos)
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname
+  )
+
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [hasUnsavedChanges])
 
   useEffect(() => {
     if (scrollRef.current && scrollPos > 0) {
@@ -171,7 +197,9 @@ export function ImportPreview({
     let mounted = true
     getMappings().then((mappings) => {
       if (!mounted) return
-      setLocalItems(
+      const changedIds: string[] = []
+      
+      const mappedItems = items.map((p, i, arr) => {
         items.map((p, i, arr) => {
           let updated = { ...p }
 
@@ -209,6 +237,10 @@ export function ImportPreview({
 
           updated.isDuplicate = isDbDuplicate || isBatchDuplicate
 
+          if (JSON.stringify(updated) !== JSON.stringify(p)) {
+            changedIds.push(updated.id)
+          }
+
           const descLower = updated.description.toLowerCase()
           if (
             descLower.includes('sabesp') &&
@@ -242,13 +274,15 @@ export function ImportPreview({
           }
 
           return updated
-        }),
-      )
+        })
+        
+      setLocalItems(mappedItems)
+      changedIds.forEach(id => markDirty(id))
     })
     return () => {
       mounted = false
     }
-  }, [transactions, items, localItems.length, setLocalItems])
+  }, [transactions, items, localItems.length, setLocalItems, markDirty])
 
   const handleUpdate = (id: string, field: keyof PreviewItem, value: any) => {
     setLocalItems((prev) =>
@@ -264,6 +298,7 @@ export function ImportPreview({
         return p
       }),
     )
+    markDirty(id)
   }
 
   const handleCategoryChange = (id: string, newCategory: string) => {
@@ -274,6 +309,7 @@ export function ImportPreview({
     setLocalItems((prev) =>
       prev.map((p) => {
         if (p.id === id || p.description === description) {
+          markDirty(p.id)
           return { ...p, category: newCategory, isSuggestedCategory: false }
         }
         return p
@@ -285,7 +321,10 @@ export function ImportPreview({
     }
   }
 
-  const handleDelete = (id: string) => setLocalItems((prev) => prev.filter((p) => p.id !== id))
+  const handleDelete = (id: string) => {
+    setLocalItems((prev) => prev.filter((p) => p.id !== id))
+    markDirty(id)
+  }
 
   const hasUnassigned = localItems.some((i) => i.triageAction === null)
   const hasUnresolvedDuplicates = localItems.some(
@@ -399,6 +438,11 @@ export function ImportPreview({
     for (const mapping of Array.from(uniqueMappings.values())) {
       await saveMapping(mapping)
     }
+    
+    if (sessionId) {
+      await updateImportSession(sessionId, { status: 'Completed', triage_state: localItems })
+    }
+    setSessionId(null)
 
     setLoading(false)
     toast({
@@ -442,6 +486,7 @@ export function ImportPreview({
               <TableHead>Valor</TableHead>
               <TableHead>Ação</TableHead>
               <TableHead>Detalhes</TableHead>
+              <TableHead className="w-12 text-center">Status</TableHead>
               <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>
@@ -619,6 +664,17 @@ export function ImportPreview({
                       </div>
                     )}
                   </TableCell>
+                  <TableCell className="text-center">
+                    {dirtyIds.has(item.id) || isSyncing ? (
+                      <div className="w-6 h-6 mx-auto rounded-full bg-amber-100 flex items-center justify-center" title="Salvando...">
+                        <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                      </div>
+                    ) : (
+                      <div className="w-6 h-6 mx-auto rounded-full bg-emerald-100 flex items-center justify-center" title="Salvo na nuvem">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"
@@ -659,6 +715,25 @@ export function ImportPreview({
           Confirmar Importação
         </Button>
       </div>
+
+      {blocker.state === 'blocked' && (
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h2 className="text-lg font-bold mb-2">Alterações não salvas</h2>
+            <p className="text-sm text-slate-600 mb-6">
+              Você tem {dirtyIds.size} itens não confirmados. O salvamento automático ainda está em andamento. Deseja sair mesmo assim e arriscar perder os dados?
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => blocker.reset?.()}>
+                Continuar aguardando
+              </Button>
+              <Button variant="destructive" onClick={() => blocker.proceed?.()}>
+                Sair sem salvar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

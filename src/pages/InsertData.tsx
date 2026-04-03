@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { TransactionForm } from '@/components/TransactionForm'
 import { TransactionList } from '@/components/TransactionList'
 import { DashboardSummary } from '@/components/DashboardSummary'
@@ -8,23 +9,55 @@ import { Button } from '@/components/ui/button'
 import { ClipboardPaste } from 'lucide-react'
 import { AutoSaveControls } from '@/components/AutoSaveControls'
 import { LatestCheckpointIndicator } from '@/components/LatestCheckpointIndicator'
+import { getImportSessionById, getActiveImportSession } from '@/services/import_sessions'
 
 export default function InsertData() {
   const [isBulkOpen, setIsBulkOpen] = useState(false)
+  const location = useLocation()
 
   useEffect(() => {
-    const hasPending = localStorage.getItem('autosave_importer_localItems')
-    if (hasPending) {
-      try {
-        const parsed = JSON.parse(hasPending)
-        if (parsed && parsed.length > 0) {
+    const checkActiveSession = async () => {
+      const state = location.state as any
+      if (state?.resumeSessionId) {
+        const session = await getImportSessionById(state.resumeSessionId)
+        if (session) {
+          localStorage.setItem(
+            'autosave_importer_localItems',
+            JSON.stringify(session.triage_state || []),
+          )
+          localStorage.setItem('autosave_importer_step', '2')
+          localStorage.setItem('autosave_importer_sessionId', JSON.stringify(session.id))
+          localStorage.setItem(
+            'autosave_importer_scroll',
+            JSON.stringify(session.last_position || 0),
+          )
+          setIsBulkOpen(true)
+          window.history.replaceState({}, document.title) // Clear location state
+        }
+      } else {
+        const hasPending = localStorage.getItem('autosave_importer_localItems')
+        if (!hasPending || hasPending === '[]') {
+          const active = await getActiveImportSession()
+          if (active) {
+            localStorage.setItem(
+              'autosave_importer_localItems',
+              JSON.stringify(active.triage_state || []),
+            )
+            localStorage.setItem('autosave_importer_step', '2')
+            localStorage.setItem('autosave_importer_sessionId', JSON.stringify(active.id))
+            localStorage.setItem(
+              'autosave_importer_scroll',
+              JSON.stringify(active.last_position || 0),
+            )
+            setIsBulkOpen(true)
+          }
+        } else if (hasPending && hasPending !== '[]') {
           setIsBulkOpen(true)
         }
-      } catch (e) {
-        console.error('Failed to parse autosave data', e)
       }
     }
-  }, [])
+    checkActiveSession()
+  }, [location.state])
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up">

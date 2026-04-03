@@ -27,10 +27,13 @@ const items = [
   { title: 'Calculadora de Comissão', url: '/comissoes', icon: Calculator },
   { title: 'Margem de Contribuição', url: '/margem-contribuicao', icon: Activity },
   { title: 'Custos Operacionais', url: '/custos-operacionais', icon: Receipt },
+  { title: 'Importações', url: '/importacoes', icon: FileText },
   { title: 'Auditoria', url: '/auditoria', icon: History },
   { title: 'Relatórios', url: '/relatorios', icon: PieChart },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ]
+
+import { FileText } from 'lucide-react'
 
 export function AppSidebar() {
   const location = useLocation()

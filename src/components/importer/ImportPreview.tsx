@@ -27,6 +27,18 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useMemo } from 'react'
 import { useTransactions } from '@/contexts/TransactionContext'
 import { toast } from '@/hooks/use-toast'
 import {
@@ -52,83 +64,148 @@ import { updateImportSession } from '@/services/import_sessions'
 import { useDetails } from '@/contexts/DetailsContext'
 import { createDetail } from '@/services/details'
 
-function DetailCombobox({
-  value,
+function DescriptionEditor({
+  item,
+  localItems,
+  suggestions,
   onChange,
-  details,
+  onBulkChange,
 }: {
-  value: string
+  item: PreviewItem
+  localItems: PreviewItem[]
+  suggestions: string[]
   onChange: (val: string) => void
-  details: { id: string; name: string }[]
+  onBulkChange: (oldVal: string, newVal: string) => void
 }) {
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
+  const [alertOpen, setAlertOpen] = useState(false)
+  const [pendingValue, setPendingValue] = useState('')
 
-  const exactMatch = details.some((d) => d.name.toLowerCase() === searchValue.toLowerCase())
+  const identicalCount = localItems.filter(
+    (i) => i.id !== item.id && i.description === item.description,
+  ).length
+
+  const handleSelect = (newValue: string) => {
+    if (newValue === item.description) {
+      setOpen(false)
+      return
+    }
+
+    if (identicalCount > 0) {
+      setPendingValue(newValue)
+      setAlertOpen(true)
+    } else {
+      onChange(newValue)
+    }
+    setOpen(false)
+  }
+
+  const exactMatch = suggestions.some((s) => s.toLowerCase() === searchValue.toLowerCase())
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="h-8 w-full justify-between text-xs font-normal truncate px-2"
-          title={value}
-        >
-          <span className="truncate">{value || 'Descrição...'}</span>
-          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[250px] p-0" align="start">
-        <Command>
-          <CommandInput
-            placeholder="Buscar detalhe..."
-            value={searchValue}
-            onValueChange={setSearchValue}
-            className="h-9 text-xs"
-          />
-          <CommandList>
-            <CommandEmpty className="p-2 text-xs text-muted-foreground text-center">
-              Nenhum detalhe encontrado.
-            </CommandEmpty>
-            <CommandGroup className="max-h-[200px] overflow-auto">
-              {details.map((d) => (
-                <CommandItem
-                  key={d.id}
-                  value={d.name}
-                  onSelect={() => {
-                    onChange(d.name)
-                    setOpen(false)
-                    setSearchValue('')
-                  }}
-                  className="text-xs"
-                >
-                  <Check
-                    className={cn('mr-2 h-3 w-3', value === d.name ? 'opacity-100' : 'opacity-0')}
-                  />
-                  {d.name}
-                </CommandItem>
-              ))}
-              {searchValue && !exactMatch && (
-                <CommandItem
-                  value={searchValue}
-                  onSelect={() => {
-                    onChange(searchValue)
-                    setOpen(false)
-                    setSearchValue('')
-                  }}
-                  className="text-xs font-semibold text-primary"
-                >
-                  <Check className="mr-2 h-3 w-3 opacity-0" />
-                  Criar "{searchValue}"
-                </CommandItem>
-              )}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <>
+      <Popover
+        open={open}
+        onOpenChange={(o) => {
+          if (o) setSearchValue(item.description)
+          setOpen(o)
+        }}
+      >
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <div
+                className={cn(
+                  'line-clamp-2 text-xs leading-snug cursor-pointer border border-transparent hover:border-slate-300 hover:shadow-sm hover:bg-white p-1.5 rounded min-h-[32px] flex items-center w-full text-left transition-all',
+                  open ? 'bg-white border-slate-300 shadow-sm' : 'bg-transparent',
+                )}
+              >
+                {item.description || 'Descrição...'}
+              </div>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          {!open && item.description && item.description.length > 30 && (
+            <TooltipContent side="top" className="max-w-[300px] break-words">
+              {item.description}
+            </TooltipContent>
+          )}
+        </Tooltip>
+        <PopoverContent className="w-[300px] p-0" align="start">
+          <Command>
+            <CommandInput
+              placeholder="Editar descrição..."
+              value={searchValue}
+              onValueChange={setSearchValue}
+              className="h-9 text-xs"
+            />
+            <CommandList>
+              <CommandEmpty className="p-2 text-xs text-muted-foreground text-center">
+                Nenhuma sugestão encontrada.
+              </CommandEmpty>
+              <CommandGroup className="max-h-[200px] overflow-auto">
+                {suggestions.map((s) => (
+                  <CommandItem
+                    key={s}
+                    value={s}
+                    onSelect={() => handleSelect(s)}
+                    className="text-xs"
+                  >
+                    <Check
+                      className={cn(
+                        'mr-2 h-3 w-3 shrink-0',
+                        item.description === s ? 'opacity-100' : 'opacity-0',
+                      )}
+                    />
+                    <span className="truncate">{s}</span>
+                  </CommandItem>
+                ))}
+                {searchValue && !exactMatch && (
+                  <CommandItem
+                    value={searchValue}
+                    onSelect={() => handleSelect(searchValue)}
+                    className="text-xs font-semibold text-primary"
+                  >
+                    <Check className="mr-2 h-3 w-3 opacity-0 shrink-0" />
+                    Usar "{searchValue}"
+                  </CommandItem>
+                )}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+
+      <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Padronizar Descrição</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este texto ("{item.description}") aparece em {identicalCount + 1} lançamentos nesta
+              importação. Deseja padronizar todos para o novo nome "{pendingValue}"?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                onChange(pendingValue)
+                setAlertOpen(false)
+              }}
+            >
+              Apenas este
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                onBulkChange(item.description, pendingValue)
+                setAlertOpen(false)
+              }}
+            >
+              Sim, padronizar todos
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
@@ -259,6 +336,34 @@ export function ImportPreview({
     ({ currentLocation, nextLocation }) =>
       hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname,
   )
+
+  const uniqueDescriptions = useMemo(() => {
+    const set = new Set<string>()
+    transactions.forEach((t) => {
+      if (t.descricao) set.add(t.descricao)
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [transactions])
+
+  const handleBulkDescriptionChange = async (oldDesc: string, newDesc: string) => {
+    setLocalItems((prev) =>
+      prev.map((p) => {
+        if (p.description === oldDesc) {
+          markDirty(p.id)
+          return { ...p, description: newDesc }
+        }
+        return p
+      }),
+    )
+    const exists = details.some((d) => d.name.toLowerCase() === newDesc.toLowerCase())
+    if (!exists && user) {
+      try {
+        await createDetail({ user_id: user.id, name: newDesc })
+      } catch (e) {
+        console.error('Failed to create detail', e)
+      }
+    }
+  }
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -625,10 +730,12 @@ export function ImportPreview({
                     </div>
                   </TableCell>
                   <TableCell className="max-w-[200px] text-xs">
-                    <DetailCombobox
-                      value={item.description}
+                    <DescriptionEditor
+                      item={item}
+                      localItems={localItems}
+                      suggestions={uniqueDescriptions}
                       onChange={(val) => handleDescriptionChange(item.id, val)}
-                      details={details}
+                      onBulkChange={handleBulkDescriptionChange}
                     />
                     {item.hasSpecificAlert && (
                       <div className="flex items-center gap-1 mt-1 text-red-600 bg-red-100 p-1 rounded-sm w-fit border border-red-200">

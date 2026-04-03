@@ -730,8 +730,7 @@ export function ImportPreview({
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
             <h2 className="text-lg font-bold mb-2">Alterações não salvas</h2>
             <p className="text-sm text-slate-600 mb-6">
-              Você tem {dirtyIds.size} itens não confirmados. O salvamento automático ainda está em
-              andamento. Deseja sair mesmo assim e arriscar perder os dados?
+              Você tem {dirtyIds.size} itens não confirmados. Deseja salvar antes de sair?
             </p>
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => blocker.reset?.()}>

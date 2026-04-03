@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -47,36 +47,32 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>
 }
 
-const AppRoutes = () => (
-  <Routes>
-    {/* Public Auth Routes */}
-    <Route path="/login" element={<Login />} />
-    <Route path="/register" element={<Register />} />
-    <Route path="/recovery" element={<Recovery />} />
-
-    {/* Protected App Routes */}
-    <Route
-      element={
-        <ProtectedRoute>
-          <Layout />
-        </ProtectedRoute>
-      }
-    >
-      <Route path="/" element={<Index />} />
-      <Route path="/inserir" element={<InsertData />} />
-      <Route path="/resultado-empresa" element={<CompanyResult />} />
-      <Route path="/relatorios" element={<Reports />} />
-      <Route path="/margem-contribuicao" element={<ContributionMargin />} />
-      <Route path="/custos-operacionais" element={<OperatingCosts />} />
-      <Route path="/comissoes" element={<Commissions />} />
-      <Route path="/importacoes" element={<Imports />} />
-      <Route path="/auditoria" element={<Audit />} />
-      <Route path="/configuracoes" element={<Settings />} />
-    </Route>
-
-    <Route path="*" element={<NotFound />} />
-  </Routes>
-)
+const router = createBrowserRouter([
+  { path: '/login', element: <Login /> },
+  { path: '/register', element: <Register /> },
+  { path: '/recovery', element: <Recovery /> },
+  {
+    path: '/',
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Index /> },
+      { path: 'inserir', element: <InsertData /> },
+      { path: 'resultado-empresa', element: <CompanyResult /> },
+      { path: 'relatorios', element: <Reports /> },
+      { path: 'margem-contribuicao', element: <ContributionMargin /> },
+      { path: 'custos-operacionais', element: <OperatingCosts /> },
+      { path: 'comissoes', element: <Commissions /> },
+      { path: 'importacoes', element: <Imports /> },
+      { path: 'auditoria', element: <Audit /> },
+      { path: 'configuracoes', element: <Settings /> },
+    ],
+  },
+  { path: '*', element: <NotFound /> },
+])
 
 const App = () => (
   <AuthProvider>
@@ -87,15 +83,11 @@ const App = () => (
             <BrokerProvider>
               <BudgetProvider>
                 <AutoSaveProvider>
-                  <BrowserRouter
-                    future={{ v7_startTransition: false, v7_relativeSplatPath: false }}
-                  >
-                    <TooltipProvider>
-                      <Toaster />
-                      <Sonner />
-                      <AppRoutes />
-                    </TooltipProvider>
-                  </BrowserRouter>
+                  <TooltipProvider>
+                    <Toaster />
+                    <Sonner />
+                    <RouterProvider router={router} />
+                  </TooltipProvider>
                 </AutoSaveProvider>
               </BudgetProvider>
             </BrokerProvider>

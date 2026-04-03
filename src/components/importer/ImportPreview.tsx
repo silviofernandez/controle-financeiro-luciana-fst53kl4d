@@ -529,48 +529,24 @@ export function ImportPreview({
     markDirty(id)
   }
 
-  const hasUnassigned = localItems.some((i) => i.triageAction === null)
-  const hasUnresolvedDuplicates = localItems.some(
-    (i) =>
-      i.isDuplicate &&
-      !i.duplicateOverride &&
-      i.triageAction !== 'Já lançado' &&
-      i.triageAction !== null,
-  )
-
   const handleConfirm = async () => {
-    if (hasUnassigned) {
-      toast({
-        title: 'Atenção',
-        description: 'Realize a triagem de todos os itens.',
-        variant: 'destructive',
-      })
-      return
-    }
-    if (hasUnresolvedDuplicates) {
-      toast({
-        title: 'Atenção',
-        description: 'Resolva os alertas de duplicidade.',
-        variant: 'destructive',
-      })
-      return
-    }
-
     setLoading(true)
 
     const toAdd: Omit<Transaction, 'id' | 'created_at'>[] = []
     const uniqueMappings = new Map<string, any>()
 
     localItems.forEach((p) => {
-      if (p.triageAction === 'Já lançado' || !p.triageAction) return
+      if (p.triageAction === 'Já lançado') return
 
-      if (p.triageAction === 'Empresa') {
+      const action = p.triageAction || 'Empresa'
+
+      if (action === 'Empresa') {
         toAdd.push({
-          descricao: p.description,
-          valor: p.value,
+          descricao: p.description || 'Sem descrição',
+          valor: p.value || 0,
           data: p.date,
-          unidade: p.unit,
-          banco: p.bank,
+          unidade: p.unit || 'Geral',
+          banco: p.bank || 'Outros',
           tipo: p.pbType === 'Receita' ? 'receita' : 'despesa',
           classificacao:
             p.pbType === 'Despesa Fixa'
@@ -578,28 +554,28 @@ export function ImportPreview({
               : p.pbType === 'Despesa Variável'
                 ? 'variavel'
                 : null,
-          categoria: p.category,
+          categoria: p.category || 'A triar',
           isCheckpoint: p.isCheckpoint,
         })
-      } else if (p.triageAction === 'Pró-labore') {
+      } else if (action === 'Pró-labore') {
         toAdd.push({
-          descricao: `Pró-labore - ${p.description}`,
-          valor: p.value,
+          descricao: `Pró-labore - ${p.description || 'Sem descrição'}`,
+          valor: p.value || 0,
           data: p.date,
-          unidade: p.unit,
-          banco: p.bank,
+          unidade: p.unit || 'Pró-labore (Silvio/Luciana)',
+          banco: p.bank || 'Outros',
           tipo: 'despesa',
           classificacao: 'fixo',
           categoria: 'Pró-labore',
         })
-      } else if (p.triageAction === 'Dividir') {
+      } else if (action === 'Dividir') {
         if (p.splitEmpresaValue && p.splitEmpresaValue > 0) {
           toAdd.push({
-            descricao: p.description,
+            descricao: p.description || 'Sem descrição',
             valor: p.splitEmpresaValue,
             data: p.date,
-            unidade: p.unit,
-            banco: p.bank,
+            unidade: p.unit || 'Geral',
+            banco: p.bank || 'Outros',
             tipo: p.pbType === 'Receita' ? 'receita' : 'despesa',
             classificacao:
               p.pbType === 'Despesa Fixa'
@@ -607,16 +583,16 @@ export function ImportPreview({
                 : p.pbType === 'Despesa Variável'
                   ? 'variavel'
                   : null,
-            categoria: p.category,
+            categoria: p.category || 'A triar',
           })
         }
         if (p.splitProlaboreValue && p.splitProlaboreValue > 0) {
           toAdd.push({
-            descricao: `Pró-labore - ${p.description}`,
+            descricao: `Pró-labore - ${p.description || 'Sem descrição'}`,
             valor: p.splitProlaboreValue,
             data: p.date,
-            unidade: p.unit,
-            banco: p.bank,
+            unidade: p.unit || 'Pró-labore (Silvio/Luciana)',
+            banco: p.bank || 'Outros',
             tipo: 'despesa',
             classificacao: 'fixo',
             categoria: 'Pró-labore',
@@ -624,12 +600,12 @@ export function ImportPreview({
         }
       }
 
-      if (user && p.triageAction !== 'Já lançado') {
+      if (user && action !== 'Já lançado' && p.description) {
         uniqueMappings.set(p.description, {
           user_id: user.id,
           name: p.description,
-          suggested_category: p.triageAction === 'Pró-labore' ? 'Pró-labore' : p.category,
-          last_triage_type: p.triageAction,
+          suggested_category: action === 'Pró-labore' ? 'Pró-labore' : p.category || 'A triar',
+          last_triage_type: action,
         })
       }
     })
@@ -662,7 +638,22 @@ export function ImportPreview({
   return (
     <div className="space-y-4 animate-fade-in flex flex-col h-full">
       <div className="flex justify-between items-center shrink-0">
-        <h3 className="text-sm font-medium">Triagem Inteligente</h3>
+        <div className="flex items-center gap-4">
+          <h3 className="text-sm font-medium">Triagem Inteligente</h3>
+          <Button
+            onClick={handleConfirm}
+            disabled={loading || localItems.length === 0}
+            size="sm"
+            className="gap-2"
+          >
+            {loading ? (
+              <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            ) : (
+              <CheckCircle2 className="w-3 h-3" />
+            )}
+            Salvar Tudo Agora
+          </Button>
+        </div>
         <div className="flex gap-4">
           <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded border border-blue-100">
             Fin: {localItems.filter((i) => i.source === 'Financeiro').length}
@@ -917,7 +908,7 @@ export function ImportPreview({
         </Button>
         <Button
           onClick={handleConfirm}
-          disabled={loading || hasUnassigned || hasUnresolvedDuplicates || localItems.length === 0}
+          disabled={loading || localItems.length === 0}
           className="gap-2 px-8"
         >
           {loading ? (

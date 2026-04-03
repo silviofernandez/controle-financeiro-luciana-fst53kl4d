@@ -19,4 +19,5 @@ export interface PreviewItem {
   isDuplicate?: boolean
   duplicateOverride?: boolean
   hasSpecificAlert?: string
+  isSuggestedCategory?: boolean
 }

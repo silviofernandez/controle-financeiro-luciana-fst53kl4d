@@ -18,14 +18,121 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
 import { useTransactions } from '@/contexts/TransactionContext'
 import { toast } from '@/hooks/use-toast'
-import { ArrowLeft, CheckCircle2, Trash2, AlertTriangle, Info, FileText } from 'lucide-react'
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Trash2,
+  AlertTriangle,
+  Info,
+  FileText,
+  ChevronsUpDown,
+  Check,
+} from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { CATEGORIES, UNIDADES, Transaction, Unidade } from '@/types'
 import { PreviewItem, TriageAction } from './types'
 import { getMappings, saveMapping } from '@/services/establishment_mappings'
 import { useAuth } from '@/contexts/AuthContext'
+
+function CategoryCombobox({
+  value,
+  isSuggested,
+  onChange,
+  customCategories,
+}: {
+  value: string
+  isSuggested?: boolean
+  onChange: (val: string) => void
+  customCategories: string[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
+
+  const allCategories = Array.from(new Set(['A triar', ...CATEGORIES, ...customCategories]))
+  const exactMatch = allCategories.some((c) => c.toLowerCase() === searchValue.toLowerCase())
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            'h-8 w-full flex-1 justify-between text-xs font-normal',
+            isSuggested &&
+              'bg-yellow-100/50 hover:bg-yellow-100/70 border-yellow-300 text-yellow-900',
+            (!value || value === 'A triar') &&
+              !isSuggested &&
+              'border-amber-400 ring-1 ring-amber-300 bg-amber-50 text-amber-800 font-medium',
+          )}
+        >
+          <span className="truncate">{value || 'Categoria...'}</span>
+          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[220px] p-0" align="start">
+        <Command>
+          <CommandInput
+            placeholder="Buscar categoria..."
+            value={searchValue}
+            onValueChange={setSearchValue}
+            className="h-9 text-xs"
+          />
+          <CommandList>
+            <CommandEmpty className="p-2 text-xs text-muted-foreground text-center">
+              Nenhuma categoria encontrada.
+            </CommandEmpty>
+            <CommandGroup className="max-h-[200px] overflow-auto">
+              {allCategories.map((cat) => (
+                <CommandItem
+                  key={cat}
+                  value={cat}
+                  onSelect={() => {
+                    onChange(cat)
+                    setOpen(false)
+                    setSearchValue('')
+                  }}
+                  className="text-xs"
+                >
+                  <Check
+                    className={cn('mr-2 h-3 w-3', value === cat ? 'opacity-100' : 'opacity-0')}
+                  />
+                  {cat}
+                </CommandItem>
+              ))}
+              {searchValue && !exactMatch && (
+                <CommandItem
+                  value={searchValue}
+                  onSelect={() => {
+                    onChange(searchValue)
+                    setOpen(false)
+                    setSearchValue('')
+                  }}
+                  className="text-xs font-semibold text-primary"
+                >
+                  <Check className="mr-2 h-3 w-3 opacity-0" />
+                  Criar "{searchValue}"
+                </CommandItem>
+              )}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 interface ImportPreviewProps {
   items: PreviewItem[]
@@ -38,6 +145,7 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
   const { user } = useAuth()
   const [localItems, setLocalItems] = useState<PreviewItem[]>([])
   const [loading, setLoading] = useState(false)
+  const [customCategories, setCustomCategories] = useState<string[]>([])
 
   useEffect(() => {
     let mounted = true
@@ -51,11 +159,12 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
             p.description.toLowerCase().includes(m.name.toLowerCase()),
           )
           if (match && (!updated.category || updated.category === 'A triar')) {
-            updated.triageAction = match.last_triage_type
+            updated.triageAction = match.last_triage_type || 'Empresa'
             updated.category = match.suggested_category || p.category
+            updated.isSuggestedCategory = true
           }
 
-          if (!updated.triageAction && updated.category) {
+          if (!updated.triageAction && updated.category && updated.category !== 'A triar') {
             updated.triageAction = 'Empresa'
           }
 
@@ -135,6 +244,25 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
         return p
       }),
     )
+  }
+
+  const handleCategoryChange = (id: string, newCategory: string) => {
+    const item = localItems.find((i) => i.id === id)
+    if (!item) return
+    const description = item.description
+
+    setLocalItems((prev) =>
+      prev.map((p) => {
+        if (p.id === id || p.description === description) {
+          return { ...p, category: newCategory, isSuggestedCategory: false }
+        }
+        return p
+      }),
+    )
+
+    if (!CATEGORIES.includes(newCategory as any) && !customCategories.includes(newCategory)) {
+      setCustomCategories((prev) => [...prev, newCategory])
+    }
   }
 
   const handleDelete = (id: string) => setLocalItems((prev) => prev.filter((p) => p.id !== id))
@@ -276,7 +404,7 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
           </span>
         </div>
       </div>
-      <div className="border rounded-md overflow-x-auto bg-white flex-1 relative">
+      <div className="border rounded-md bg-white flex-1 max-h-[60vh] overflow-y-auto relative">
         <Table>
           <TableHeader className="sticky top-0 bg-slate-50 z-10 shadow-sm">
             <TableRow>
@@ -299,6 +427,7 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
                   className={cn(
                     item.triageAction === 'Já lançado' ? 'opacity-50 bg-slate-50' : '',
                     isDupe ? 'bg-amber-50 hover:bg-amber-100 border-l-4 border-amber-400' : '',
+                    item.isSuggestedCategory && !isDupe ? 'bg-yellow-50/50' : '',
                   )}
                 >
                   <TableCell>
@@ -368,7 +497,12 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
                       onValueChange={(v: TriageAction) => handleUpdate(item.id, 'triageAction', v)}
                     >
                       <SelectTrigger
-                        className={`w-[130px] h-8 text-xs ${!item.triageAction ? 'border-primary shadow-sm ring-1 ring-primary/20' : ''}`}
+                        className={cn(
+                          'w-[130px] h-8 text-xs',
+                          !item.triageAction && 'border-primary shadow-sm ring-1 ring-primary/20',
+                          item.isSuggestedCategory &&
+                            'bg-yellow-100/50 border-yellow-300 text-yellow-900',
+                        )}
                       >
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
@@ -383,30 +517,12 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
                   <TableCell className="min-w-[280px]">
                     {item.triageAction === 'Empresa' && (
                       <div className="flex gap-2">
-                        <Select
+                        <CategoryCombobox
                           value={item.category}
-                          onValueChange={(v) => handleUpdate(item.id, 'category', v)}
-                        >
-                          <SelectTrigger
-                            className={cn(
-                              'h-8 text-xs flex-1',
-                              (!item.category || item.category === 'A triar') &&
-                                'border-amber-400 ring-1 ring-amber-300 bg-amber-50 text-amber-800 font-medium',
-                            )}
-                          >
-                            <SelectValue placeholder="Categoria..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="A triar" className="text-amber-600 font-medium">
-                              A triar
-                            </SelectItem>
-                            {CATEGORIES.map((c) => (
-                              <SelectItem key={c} value={c}>
-                                {c}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          isSuggested={item.isSuggestedCategory}
+                          onChange={(val) => handleCategoryChange(item.id, val)}
+                          customCategories={customCategories}
+                        />
                         <Select
                           value={item.unit}
                           onValueChange={(v: Unidade) => handleUpdate(item.id, 'unit', v)}

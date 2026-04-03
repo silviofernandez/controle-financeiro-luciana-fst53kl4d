@@ -15,9 +15,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ImportInput } from './ImportInput'
 import { ImportPreview } from './ImportPreview'
+import { BatchImportProgress } from './BatchImportProgress'
 import { PreviewItem } from './types'
 import { applyAutoTagging, parseValueAndType, guessBank, applySalaryRule } from '@/lib/import-utils'
 import { Unidade } from '@/types'
@@ -40,6 +41,8 @@ export function ImportModal({
   const [items, setItems] = useState<PreviewItem[]>([])
 
   const [conflictItems, setConflictItems] = useState<PreviewItem[] | null>(null)
+  const [importQueue, setImportQueue] = useState<PreviewItem[] | null>(null)
+  const isImportingRef = useRef(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -304,11 +307,17 @@ export function ImportModal({
                 sessionId={sessionId}
                 setSessionId={setSessionId}
                 onBack={() => setStep(1)}
+                onImport={(itemsToImport: PreviewItem[]) => {
+                  isImportingRef.current = true
+                  setImportQueue(itemsToImport)
+                }}
                 onComplete={() => {
-                  setLocalItems([])
-                  setStep(1)
-                  onOpenChange(false)
-                  setTimeout(() => navigate('/relatorios'), 150)
+                  if (!isImportingRef.current) {
+                    setLocalItems([])
+                    setStep(1)
+                    onOpenChange(false)
+                    setTimeout(() => navigate('/relatorios'), 150)
+                  }
                 }}
               />
             )}
@@ -336,6 +345,23 @@ export function ImportModal({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BatchImportProgress
+        open={!!importQueue}
+        onOpenChange={(o) => {
+          if (!o) setImportQueue(null)
+        }}
+        items={importQueue || []}
+        sessionId={sessionId}
+        onComplete={() => {
+          setImportQueue(null)
+          setLocalItems([])
+          setStep(1)
+          isImportingRef.current = false
+          onOpenChange(false)
+          setTimeout(() => navigate('/relatorios'), 150)
+        }}
+      />
     </>
   )
 }

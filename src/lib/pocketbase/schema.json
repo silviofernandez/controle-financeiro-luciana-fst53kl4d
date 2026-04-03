@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-03T21:05:04.663Z",
+  "generatedAt": "2026-04-03T21:14:14.556Z",
   "collections": [
     {
       "name": "users",
@@ -29,14 +29,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -85,7 +90,11 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["Receita", "Despesa Fixa", "Despesa Variável"]
+          "selectValues": [
+            "Receita",
+            "Despesa Fixa",
+            "Despesa Variável"
+          ]
         },
         {
           "name": "category",
@@ -123,14 +132,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -172,21 +186,30 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["Empresa", "Pró-labore", "Dividir"]
+          "selectValues": [
+            "Empresa",
+            "Pró-labore",
+            "Dividir"
+          ]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -222,17 +245,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_details_user_name ON details (user_id, name)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_details_user_name ON details (user_id, name)"
+      ]
     },
     {
       "name": "import_sessions",
@@ -263,7 +293,11 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["In Progress", "Completed", "Interrupted"]
+          "selectValues": [
+            "In Progress",
+            "Completed",
+            "Interrupted"
+          ]
         },
         {
           "name": "raw_data",
@@ -288,14 +322,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [

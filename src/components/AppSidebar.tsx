@@ -8,6 +8,7 @@ import {
   Activity,
   Receipt,
   TrendingUp,
+  History,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -26,6 +27,7 @@ const items = [
   { title: 'Calculadora de Comissão', url: '/comissoes', icon: Calculator },
   { title: 'Margem de Contribuição', url: '/margem-contribuicao', icon: Activity },
   { title: 'Custos Operacionais', url: '/custos-operacionais', icon: Receipt },
+  { title: 'Auditoria', url: '/auditoria', icon: History },
   { title: 'Relatórios', url: '/relatorios', icon: PieChart },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ]

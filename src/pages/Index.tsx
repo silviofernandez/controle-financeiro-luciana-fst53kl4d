@@ -16,6 +16,7 @@ import { DueDateAlerts } from '@/components/dashboard/DueDateAlerts'
 import { IncomeExpenseChart } from '@/components/dashboard/IncomeExpenseChart'
 import { CategoryDistribution } from '@/components/dashboard/CategoryDistribution'
 import { BudgetMonitoring } from '@/components/dashboard/BudgetMonitoring'
+import { LatestCheckpointIndicator } from '@/components/LatestCheckpointIndicator'
 
 export default function Index() {
   const { toast } = useToast()
@@ -96,6 +97,8 @@ export default function Index() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up pb-10">
+      <LatestCheckpointIndicator />
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard Financeiro</h1>

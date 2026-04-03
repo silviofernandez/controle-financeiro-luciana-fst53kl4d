@@ -7,6 +7,7 @@ import { BulkPasteModal } from '@/components/BulkPasteModal'
 import { Button } from '@/components/ui/button'
 import { ClipboardPaste } from 'lucide-react'
 import { AutoSaveControls } from '@/components/AutoSaveControls'
+import { LatestCheckpointIndicator } from '@/components/LatestCheckpointIndicator'
 
 export default function InsertData() {
   const [isBulkOpen, setIsBulkOpen] = useState(false)
@@ -24,6 +25,8 @@ export default function InsertData() {
           Importação em Lote (Colar Tabela)
         </Button>
       </div>
+
+      <LatestCheckpointIndicator />
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         <div className="w-full lg:w-[420px] shrink-0 space-y-6">

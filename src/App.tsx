@@ -23,6 +23,7 @@ import { BrokerProvider } from './contexts/BrokerContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { SettingsProvider } from './contexts/SettingsContext'
 import { BudgetProvider } from './contexts/BudgetContext'
+import { AutoSaveProvider } from './contexts/AutoSaveContext'
 import { Loader2 } from 'lucide-react'
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -79,13 +80,15 @@ const App = () => (
         <CommissionProvider>
           <BrokerProvider>
             <BudgetProvider>
-              <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
-                <TooltipProvider>
-                  <Toaster />
-                  <Sonner />
-                  <AppRoutes />
-                </TooltipProvider>
-              </BrowserRouter>
+              <AutoSaveProvider>
+                <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
+                  <TooltipProvider>
+                    <Toaster />
+                    <Sonner />
+                    <AppRoutes />
+                  </TooltipProvider>
+                </BrowserRouter>
+              </AutoSaveProvider>
             </BudgetProvider>
           </BrokerProvider>
         </CommissionProvider>

@@ -4,14 +4,15 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
 import { FileText, CheckCircle2, UploadCloud } from 'lucide-react'
+import { usePersistentState } from '@/hooks/use-persistent-state'
 
 interface ImportInputProps {
   onDataParsed: (finData: string[][] | null, opData: string[][] | null) => void
 }
 
 export function ImportInput({ onDataParsed }: ImportInputProps) {
-  const [finText, setFinText] = useState('')
-  const [opText, setOpText] = useState('')
+  const [finText, setFinText] = usePersistentState('import_finText', '')
+  const [opText, setOpText] = usePersistentState('import_opText', '')
   const [isDraggingFin, setIsDraggingFin] = useState(false)
   const [isDraggingOp, setIsDraggingOp] = useState(false)
 

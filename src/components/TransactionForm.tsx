@@ -33,6 +33,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn, formatCurrency, parseCurrency } from '@/lib/utils'
 import { Loader2, Plus, Camera, FileText } from 'lucide-react'
+import { usePersistentState } from '@/hooks/use-persistent-state'
 import { ImportModal } from './importer/ImportModal'
 import { OCRScannerModal } from './OCRScannerModal'
 import { toast } from '@/hooks/use-toast'
@@ -68,20 +69,23 @@ export function TransactionForm() {
   const { teams } = useCommissions()
   const { categories, applyRules } = useSettings()
 
-  const [formType, setFormType] = useState<'receita' | 'despesa_fixa' | 'despesa_variavel'>(
-    'despesa_variavel',
-  )
+  const [formType, setFormType] = usePersistentState<
+    'receita' | 'despesa_fixa' | 'despesa_variavel'
+  >('tf_formType', 'despesa_variavel')
   const tipo = formType === 'receita' ? 'receita' : 'despesa'
   const classificacao =
     formType === 'despesa_fixa' ? 'fixo' : formType === 'despesa_variavel' ? 'variavel' : null
-  const [receitaTipo, setReceitaTipo] = useState<ReceitaTipo>('outro')
-  const [despesaTipo, setDespesaTipo] = useState<DespesaTipo>('unitaria')
-  const [categoria, setCategoria] = useState<string>('')
-  const [descricao, setDescricao] = useState('')
-  const [valorInput, setValorInput] = useState('')
-  const [observacoes, setObservacoes] = useState('')
+  const [receitaTipo, setReceitaTipo] = usePersistentState<ReceitaTipo>('tf_receitaTipo', 'outro')
+  const [despesaTipo, setDespesaTipo] = usePersistentState<DespesaTipo>(
+    'tf_despesaTipo',
+    'unitaria',
+  )
+  const [categoria, setCategoria] = usePersistentState<string>('tf_categoria', '')
+  const [descricao, setDescricao] = usePersistentState('tf_descricao', '')
+  const [valorInput, setValorInput] = usePersistentState('tf_valorInput', '')
+  const [observacoes, setObservacoes] = usePersistentState('tf_observacoes', '')
 
-  const [data, setData] = useState(() => {
+  const [data, setData] = usePersistentState('tf_data', () => {
     try {
       const isoString = new Date().toISOString()
       return typeof isoString === 'string' && isoString ? isoString.split('T')[0] : ''
@@ -90,21 +94,30 @@ export function TransactionForm() {
     }
   })
 
-  const [unidade, setUnidade] = useState<Unidade>('Geral')
-  const [banco, setBanco] = useState<Banco>('Outros')
-  const [isCheckpoint, setIsCheckpoint] = useState(false)
+  const [unidade, setUnidade] = usePersistentState<Unidade>('tf_unidade', 'Geral')
+  const [banco, setBanco] = usePersistentState<Banco>('tf_banco', 'Outros')
+  const [isCheckpoint, setIsCheckpoint] = usePersistentState('tf_isCheckpoint', false)
   const [loading, setLoading] = useState(false)
 
   // Commission dynamic fields
-  const [selectedTeamId, setSelectedTeamId] = useState<string>('')
-  const [participantNames, setParticipantNames] = useState<Record<string, string>>({})
-  const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({})
+  const [selectedTeamId, setSelectedTeamId] = usePersistentState<string>('tf_selectedTeamId', '')
+  const [participantNames, setParticipantNames] = usePersistentState<Record<string, string>>(
+    'tf_participantNames',
+    {},
+  )
+  const [selectedVariations, setSelectedVariations] = usePersistentState<Record<string, string>>(
+    'tf_selectedVariations',
+    {},
+  )
   const [openCombobox, setOpenCombobox] = useState<Record<string, boolean>>({})
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({})
 
-  const [notaFiscal, setNotaFiscal] = useState(false)
-  const [juridico, setJuridico] = useState(false)
-  const [juridicoValorInput, setJuridicoValorInput] = useState(() => formatCurrency(200))
+  const [notaFiscal, setNotaFiscal] = usePersistentState('tf_notaFiscal', false)
+  const [juridico, setJuridico] = usePersistentState('tf_juridico', false)
+  const [juridicoValorInput, setJuridicoValorInput] = usePersistentState(
+    'tf_juridicoValorInput',
+    () => formatCurrency(200),
+  )
 
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [confirmDialogVisible, setConfirmDialogVisible] = useState(false)

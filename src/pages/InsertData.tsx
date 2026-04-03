@@ -6,6 +6,7 @@ import { ReconciliationAlert } from '@/components/ReconciliationAlert'
 import { BulkPasteModal } from '@/components/BulkPasteModal'
 import { Button } from '@/components/ui/button'
 import { ClipboardPaste } from 'lucide-react'
+import { AutoSaveControls } from '@/components/AutoSaveControls'
 
 export default function InsertData() {
   const [isBulkOpen, setIsBulkOpen] = useState(false)
@@ -35,6 +36,7 @@ export default function InsertData() {
       </div>
 
       <BulkPasteModal open={isBulkOpen} onOpenChange={setIsBulkOpen} />
+      <AutoSaveControls />
     </div>
   )
 }

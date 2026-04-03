@@ -5,22 +5,31 @@ import { ImportInput } from './importer/ImportInput'
 import { ImportMapping } from './importer/ImportMapping'
 import { ImportPreview } from './importer/ImportPreview'
 import { PreviewItem } from './importer/types'
+import { usePersistentState } from '@/hooks/use-persistent-state'
 
 export function DataImporter() {
-  const [step, setStep] = useState<'input' | 'mapping' | 'preview'>('input')
-  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
-  const [csvData, setCsvData] = useState<string[][]>([])
-  const [previewItems, setPreviewItems] = useState<PreviewItem[]>([])
+  const [step, setStep] = usePersistentState<'input' | 'mapping' | 'preview'>(
+    'importer_step',
+    'input',
+  )
+  const [csvHeaders, setCsvHeaders] = usePersistentState<string[]>('importer_csvHeaders', [])
+  const [csvData, setCsvData] = usePersistentState<string[][]>('importer_csvData', [])
+  const [previewItems, setPreviewItems] = usePersistentState<PreviewItem[]>(
+    'importer_previewItems',
+    [],
+  )
 
   const handleDataParsed = (headers: string[], data: string[][]) => {
     setCsvHeaders(headers)
     setCsvData(data)
     setStep('mapping')
+    localStorage.removeItem('autosave_importer_localItems')
   }
 
   const handleMappingComplete = (items: PreviewItem[]) => {
     setPreviewItems(items)
     setStep('preview')
+    localStorage.removeItem('autosave_importer_localItems')
   }
 
   const handleImportComplete = () => {
@@ -28,6 +37,9 @@ export function DataImporter() {
     setCsvHeaders([])
     setCsvData([])
     setPreviewItems([])
+    localStorage.removeItem('autosave_importer_localItems')
+    localStorage.removeItem('autosave_import_finText')
+    localStorage.removeItem('autosave_import_opText')
   }
 
   return (

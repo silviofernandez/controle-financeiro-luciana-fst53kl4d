@@ -44,6 +44,7 @@ import { CATEGORIES, UNIDADES, Transaction, Unidade } from '@/types'
 import { PreviewItem, TriageAction } from './types'
 import { getMappings, saveMapping } from '@/services/establishment_mappings'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePersistentState } from '@/hooks/use-persistent-state'
 
 function CategoryCombobox({
   value,
@@ -143,11 +144,14 @@ interface ImportPreviewProps {
 export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps) {
   const { transactions, addTransactions } = useTransactions()
   const { user } = useAuth()
-  const [localItems, setLocalItems] = useState<PreviewItem[]>([])
+  const [localItems, setLocalItems] = usePersistentState<PreviewItem[]>('importer_localItems', [])
   const [loading, setLoading] = useState(false)
   const [customCategories, setCustomCategories] = useState<string[]>([])
 
   useEffect(() => {
+    if (localItems.length > 0) return
+    if (items.length === 0) return
+
     let mounted = true
     getMappings().then((mappings) => {
       if (!mounted) return
@@ -228,7 +232,7 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
     return () => {
       mounted = false
     }
-  }, [transactions, items])
+  }, [transactions, items, localItems.length, setLocalItems])
 
   const handleUpdate = (id: string, field: keyof PreviewItem, value: any) => {
     setLocalItems((prev) =>

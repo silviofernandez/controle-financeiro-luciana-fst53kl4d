@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTransactions } from '@/contexts/TransactionContext'
+import { useDetails } from '@/contexts/DetailsContext'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import {
   Select,
@@ -26,6 +27,7 @@ import { format, parseISO, startOfDay, endOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { TrendingUp, TrendingDown, Wallet, Download, Filter, FileSpreadsheet } from 'lucide-react'
 import { CATEGORIES, UNIDADES, RECEITAS, DESPESAS_FIXAS } from '@/types'
+import { subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
 import { toast } from '@/hooks/use-toast'
 import { ReconciliationAlert } from '@/components/ReconciliationAlert'
 
@@ -44,6 +46,8 @@ export default function Reports() {
   const [unit, setUnit] = useState<string>('all')
   const [category, setCategory] = useState<string>('all')
   const [highlightDate, setHighlightDate] = useState<string | null>(null)
+  const { details } = useDetails()
+  const [detailFilter, setDetailFilter] = useState<string>('all')
 
   const handleExport = () => {
     toast({
@@ -107,7 +111,7 @@ export default function Reports() {
     }, 100)
   }
 
-  const filteredTransactions = useMemo(() => {
+  const baseFilteredTransactions = useMemo(() => {
     let filtered = transactions.filter((t) => !t.isCheckpoint)
 
     // Global Filters
@@ -152,19 +156,24 @@ export default function Reports() {
     return filtered.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
   }, [transactions, unit, category, startDate, endDate])
 
+  const filteredTransactions = useMemo(() => {
+    if (detailFilter === 'all') return baseFilteredTransactions
+    return baseFilteredTransactions.filter((t) => t.descricao === detailFilter)
+  }, [baseFilteredTransactions, detailFilter])
+
   const summary = useMemo(() => {
-    const entradas = filteredTransactions
+    const entradas = baseFilteredTransactions
       .filter((t) => t.tipo === 'receita')
       .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
 
-    const saidas = filteredTransactions
+    const saidas = baseFilteredTransactions
       .filter((t) => t.tipo === 'despesa')
       .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
 
     const saldo = entradas - saidas
 
     return { entradas, saidas, saldo }
-  }, [filteredTransactions])
+  }, [baseFilteredTransactions])
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up pb-10">
@@ -289,68 +298,310 @@ export default function Reports() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Detalhe
+              </Label>
+              <Select value={detailFilter} onValueChange={setDetailFilter}>
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder="Todos os Detalhes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Detalhes</SelectItem>
+                  {details.map((d) => (
+                    <SelectItem key={d.id} value={d.name}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {viewMode === 'operacional' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="shadow-sm border-slate-200">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">
-                Total de Entradas
-              </CardTitle>
-              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-emerald-600">
-                {formatCurrency(summary.entradas)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm border-slate-200">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">Total de Saídas</CardTitle>
-              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-                <TrendingDown className="w-4 h-4 text-red-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {formatCurrency(summary.saidas)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm border-slate-200 bg-slate-50/50">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-800">Saldo do Período</CardTitle>
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                <Wallet className="w-4 h-4 text-blue-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div
-                className={cn(
-                  'text-2xl font-bold',
-                  summary.saldo >= 0 ? 'text-blue-700' : 'text-red-700',
-                )}
-              >
-                {formatCurrency(summary.saldo)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {viewMode === 'dfc' ? (
-        <DfcReport transactions={filteredTransactions} />
+      {detailFilter !== 'all' ? (
+        <DetailReportView
+          detailName={detailFilter}
+          detailTransactions={filteredTransactions}
+          allTransactions={transactions}
+          baseFilteredTransactions={baseFilteredTransactions}
+          startDate={startDate}
+          endDate={endDate}
+        />
       ) : (
-        <OperationalView transactions={filteredTransactions} highlightDate={highlightDate} />
+        viewMode === 'operacional' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-medium text-slate-600">
+                  Total de Entradas
+                </CardTitle>
+                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {formatCurrency(summary.entradas)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-medium text-slate-600">
+                  Total de Saídas
+                </CardTitle>
+                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                  <TrendingDown className="w-4 h-4 text-red-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {formatCurrency(summary.saidas)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-slate-200 bg-slate-50/50">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-medium text-slate-800">
+                  Saldo do Período
+                </CardTitle>
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-blue-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className={cn(
+                    'text-2xl font-bold',
+                    summary.saldo >= 0 ? 'text-blue-700' : 'text-red-700',
+                  )}
+                >
+                  {formatCurrency(summary.saldo)}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )
       )}
+
+      {detailFilter === 'all' &&
+        (viewMode === 'dfc' ? (
+          <DfcReport transactions={baseFilteredTransactions} />
+        ) : (
+          <OperationalView transactions={baseFilteredTransactions} highlightDate={highlightDate} />
+        ))}
+    </div>
+  )
+}
+
+function DetailReportView({
+  detailName,
+  detailTransactions,
+  allTransactions,
+  baseFilteredTransactions,
+  startDate,
+  endDate,
+}: any) {
+  const detailTotal = useMemo(
+    () => detailTransactions.reduce((sum: number, t: any) => sum + Number(t.valor), 0),
+    [detailTransactions],
+  )
+
+  const detailType = detailTransactions.length > 0 ? detailTransactions[0].tipo : 'despesa'
+
+  const totalPeriodSameType = useMemo(
+    () =>
+      baseFilteredTransactions
+        .filter((t: any) => t.tipo === detailType)
+        .reduce((sum: number, t: any) => sum + Number(t.valor), 0),
+    [baseFilteredTransactions, detailType],
+  )
+
+  const participationPercent =
+    totalPeriodSameType > 0 ? (detailTotal / totalPeriodSameType) * 100 : 0
+
+  const previousPeriodTotal = useMemo(() => {
+    let prevStart: Date, prevEnd: Date
+    if (startDate && endDate) {
+      prevStart = subMonths(parseISO(startDate), 1)
+      prevEnd = subMonths(parseISO(endDate), 1)
+    } else {
+      const today = new Date()
+      prevStart = startOfMonth(subMonths(today, 1))
+      prevEnd = endOfMonth(subMonths(today, 1))
+    }
+
+    const prevTx = allTransactions.filter((t: any) => {
+      if (t.descricao !== detailName) return false
+      const d = parseISO(t.data)
+      if (isNaN(d.getTime())) return false
+      return isWithinInterval(d, { start: prevStart, end: prevEnd })
+    })
+
+    return prevTx.reduce((sum: number, t: any) => sum + Number(t.valor), 0)
+  }, [startDate, endDate, allTransactions, detailName])
+
+  const variation =
+    previousPeriodTotal > 0
+      ? ((detailTotal - previousPeriodTotal) / previousPeriodTotal) * 100
+      : detailTotal > 0
+        ? 100
+        : 0
+
+  const handlePrint = () => window.print()
+
+  const handleExportCSV = () => {
+    const headers = ['Data', 'Unidade', 'Banco', 'Tipo', 'Valor', 'Observação']
+    const csvContent = [
+      headers.join(','),
+      ...detailTransactions.map((t: any) => {
+        const date = format(new Date(t.data), 'dd/MM/yyyy')
+        const unit = `"${t.unidade || ''}"`
+        const banco = `"${t.banco || ''}"`
+        const type = t.tipo
+        const val = t.valor
+        const obs = `"${(t.observacoes || '').replace(/"/g, '""')}"`
+        return `${date},${unit},${banco},${type},${val},${obs}`
+      }),
+    ].join('\n')
+
+    const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvContent], {
+      type: 'text/csv;charset=utf-8;',
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute(
+      'download',
+      `relatorio_${detailName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyyMMdd')}.csv`,
+    )
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  return (
+    <div className="space-y-6 animate-fade-in-up">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-lg border border-slate-200 shadow-sm print:hidden">
+        <div>
+          <h3 className="text-lg font-bold text-slate-800">Relatório Específico: {detailName}</h3>
+          <p className="text-sm text-slate-500">Métricas e histórico para o detalhe selecionado.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handlePrint} className="gap-2">
+            PDF / Imprimir
+          </Button>
+          <Button
+            onClick={handleExportCSV}
+            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            Exportar Excel
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Total no Período</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-800">{formatCurrency(detailTotal)}</div>
+          </CardContent>
+        </Card>
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">
+              Variação (Mês Anterior)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div
+              className={cn(
+                'text-2xl font-bold',
+                variation > 0
+                  ? detailType === 'receita'
+                    ? 'text-emerald-600'
+                    : 'text-red-600'
+                  : variation < 0
+                    ? detailType === 'receita'
+                      ? 'text-red-600'
+                      : 'text-emerald-600'
+                    : 'text-slate-600',
+              )}
+            >
+              {variation > 0 ? '+' : ''}
+              {variation.toFixed(1)}%
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Comparado a {formatCurrency(previousPeriodTotal)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">
+              Participação ({detailType})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {participationPercent.toFixed(1)}%
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Do total de {formatCurrency(totalPeriodSameType)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="shadow-sm border-slate-200">
+        <CardHeader className="bg-slate-50/50 pb-4 border-b border-slate-100">
+          <CardTitle className="text-lg text-slate-800">Histórico de Lançamentos</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader className="bg-white">
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Unidade</TableHead>
+                <TableHead>Banco</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {detailTransactions.map((t: any) => (
+                <TableRow key={t.id}>
+                  <TableCell>{format(new Date(t.data), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                  <TableCell>{t.unidade}</TableCell>
+                  <TableCell>{t.banco || '-'}</TableCell>
+                  <TableCell className="capitalize">{t.tipo}</TableCell>
+                  <TableCell
+                    className={cn(
+                      'text-right font-medium',
+                      t.tipo === 'receita' ? 'text-emerald-600' : 'text-red-600',
+                    )}
+                  >
+                    {formatCurrency(Number(t.valor))}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {detailTransactions.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    Nenhum lançamento no período.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }

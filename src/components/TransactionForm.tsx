@@ -3,6 +3,7 @@ import { useTransactions } from '@/contexts/TransactionContext'
 import { useBrokers } from '@/contexts/BrokerContext'
 import { useCommissions } from '@/contexts/CommissionContext'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useDetails } from '@/contexts/DetailsContext'
 import {
   UNIDADES,
   BANCOS,
@@ -68,6 +69,7 @@ export function TransactionForm() {
   const { brokers, addBroker } = useBrokers()
   const { teams } = useCommissions()
   const { categories, applyRules } = useSettings()
+  const { details, addDetail } = useDetails()
 
   const [formType, setFormType] = usePersistentState<
     'receita' | 'despesa_fixa' | 'despesa_variavel'
@@ -120,7 +122,6 @@ export function TransactionForm() {
   )
 
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const [confirmDialogVisible, setConfirmDialogVisible] = useState(false)
   const [summaryModalVisible, setSummaryModalVisible] = useState(false)
   const [summaryData, setSummaryData] = useState<SummaryData[]>([])
 
@@ -132,18 +133,12 @@ export function TransactionForm() {
 
   const isCommission = tipo === 'receita' && !isCheckpoint && receitaTipo === 'comissao'
 
-  const historicDescriptions = useMemo(() => {
-    const relevantTransactions = transactions.filter((t) => t.tipo === tipo && !t.isCheckpoint)
-    const descriptions = relevantTransactions
-      .map((t) => (typeof t.descricao === 'string' ? t.descricao.trim() : ''))
-      .filter(Boolean)
-    return Array.from(new Set(descriptions))
-  }, [transactions, tipo])
+  const detailNames = useMemo(() => details.map((d) => d.name), [details])
 
   const suggestions = useMemo(() => {
-    if (!descricao || typeof descricao !== 'string') return historicDescriptions.slice(0, 10)
+    if (!descricao || typeof descricao !== 'string') return detailNames.slice(0, 10)
     const lowerInput = descricao.toLowerCase()
-    return historicDescriptions
+    return detailNames
       .filter(
         (d) =>
           typeof d === 'string' &&
@@ -151,7 +146,7 @@ export function TransactionForm() {
           d.toLowerCase() !== lowerInput,
       )
       .slice(0, 10)
-  }, [descricao, historicDescriptions])
+  }, [descricao, detailNames])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -274,7 +269,6 @@ export function TransactionForm() {
     setJuridicoValorInput(formatCurrency(200))
 
     setLoading(false)
-    setConfirmDialogVisible(false)
     toast({ title: 'Sucesso', description: 'Lançamento adicionado com sucesso!' })
   }
 
@@ -340,7 +334,7 @@ export function TransactionForm() {
     toast({ title: 'Sucesso', description: 'Comissão lançada com sucesso!' })
   }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
 
     if (tipo === 'receita' && !isCheckpoint && receitaTipo === 'comissao') {
@@ -428,14 +422,11 @@ export function TransactionForm() {
       }
     }
 
-    if (!isCheckpoint) {
-      const lowerDesc = typeof descricao === 'string' ? descricao.trim().toLowerCase() : ''
-      const exists = historicDescriptions.some(
-        (d) => typeof d === 'string' && d.toLowerCase() === lowerDesc,
-      )
-      if (!exists && historicDescriptions.length > 0) {
-        setConfirmDialogVisible(true)
-        return
+    if (!isCheckpoint && typeof descricao === 'string' && descricao.trim() !== '') {
+      const lowerDesc = descricao.trim().toLowerCase()
+      const exists = detailNames.some((d) => d.toLowerCase() === lowerDesc)
+      if (!exists) {
+        await addDetail(descricao.trim())
       }
     }
 
@@ -941,31 +932,6 @@ export function TransactionForm() {
           </form>
         </CardContent>
       </Card>
-
-      <AlertDialog open={confirmDialogVisible} onOpenChange={setConfirmDialogVisible}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Nova Descrição</AlertDialogTitle>
-            <AlertDialogDescription>
-              Deseja lançar uma nova descrição que ainda não existe?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setConfirmDialogVisible(false)
-                setTimeout(() => {
-                  inputRef.current?.focus()
-                  setShowSuggestions(true)
-                }, 50)
-              }}
-            >
-              Não, escolher existente
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={executeSubmit}>Sim, criar nova</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <CommissionSummaryModal
         open={summaryModalVisible}

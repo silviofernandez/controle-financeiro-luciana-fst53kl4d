@@ -25,6 +25,7 @@ import { UNIDADES, BANCOS } from '@/types'
 import { toast } from '@/hooks/use-toast'
 import { BrokerSettings } from '@/components/BrokerSettings'
 import { CommissionSettings } from '@/components/CommissionSettings'
+import { DetailsSettings } from '@/components/DetailsSettings'
 
 export default function Settings() {
   const { categories, addCategory, removeCategory, taggingRules, addRule, removeRule } =
@@ -75,11 +76,22 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="categories" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 max-w-[800px]">
-          <TabsTrigger value="categories">Categorias</TabsTrigger>
-          <TabsTrigger value="rules">Regras Auto-tagging</TabsTrigger>
-          <TabsTrigger value="collaborators">Colaboradores</TabsTrigger>
-          <TabsTrigger value="teams">Equipes</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 max-w-[1000px] h-auto p-1">
+          <TabsTrigger value="categories" className="text-xs sm:text-sm">
+            Categorias
+          </TabsTrigger>
+          <TabsTrigger value="details" className="text-xs sm:text-sm">
+            Detalhes
+          </TabsTrigger>
+          <TabsTrigger value="rules" className="text-xs sm:text-sm">
+            Regras
+          </TabsTrigger>
+          <TabsTrigger value="collaborators" className="text-xs sm:text-sm">
+            Colaboradores
+          </TabsTrigger>
+          <TabsTrigger value="teams" className="text-xs sm:text-sm">
+            Equipes
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="categories" className="space-y-4 mt-4">
@@ -141,6 +153,10 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="details" className="space-y-4 mt-4">
+          <DetailsSettings />
         </TabsContent>
 
         <TabsContent value="rules" className="space-y-4 mt-4">

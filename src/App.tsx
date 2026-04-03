@@ -22,6 +22,7 @@ import { TransactionProvider } from './contexts/TransactionContext'
 import { CommissionProvider } from './contexts/CommissionContext'
 import { BrokerProvider } from './contexts/BrokerContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { DetailsProvider } from './contexts/DetailsContext'
 import { SettingsProvider } from './contexts/SettingsContext'
 import { BudgetProvider } from './contexts/BudgetContext'
 import { AutoSaveProvider } from './contexts/AutoSaveContext'
@@ -77,25 +78,29 @@ const AppRoutes = () => (
 
 const App = () => (
   <AuthProvider>
-    <SettingsProvider>
-      <TransactionProvider>
-        <CommissionProvider>
-          <BrokerProvider>
-            <BudgetProvider>
-              <AutoSaveProvider>
-                <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
-                  <TooltipProvider>
-                    <Toaster />
-                    <Sonner />
-                    <AppRoutes />
-                  </TooltipProvider>
-                </BrowserRouter>
-              </AutoSaveProvider>
-            </BudgetProvider>
-          </BrokerProvider>
-        </CommissionProvider>
-      </TransactionProvider>
-    </SettingsProvider>
+    <DetailsProvider>
+      <SettingsProvider>
+        <TransactionProvider>
+          <CommissionProvider>
+            <BrokerProvider>
+              <BudgetProvider>
+                <AutoSaveProvider>
+                  <BrowserRouter
+                    future={{ v7_startTransition: false, v7_relativeSplatPath: false }}
+                  >
+                    <TooltipProvider>
+                      <Toaster />
+                      <Sonner />
+                      <AppRoutes />
+                    </TooltipProvider>
+                  </BrowserRouter>
+                </AutoSaveProvider>
+              </BudgetProvider>
+            </BrokerProvider>
+          </CommissionProvider>
+        </TransactionProvider>
+      </SettingsProvider>
+    </DetailsProvider>
   </AuthProvider>
 )
 

@@ -38,6 +38,13 @@ export interface Broker {
   percentage: number
 }
 
+export interface Detail {
+  id: string
+  user_id: string
+  name: string
+  created_at: string
+}
+
 export interface Transaction {
   id: string
   tipo: TransactionType

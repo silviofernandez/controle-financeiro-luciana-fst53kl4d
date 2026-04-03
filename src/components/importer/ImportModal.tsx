@@ -5,13 +5,24 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { useState } from 'react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useState, useEffect } from 'react'
 import { ImportInput } from './ImportInput'
 import { ImportPreview } from './ImportPreview'
 import { PreviewItem } from './types'
 import { applyAutoTagging, parseValueAndType, guessBank, applySalaryRule } from '@/lib/import-utils'
 import { Unidade } from '@/types'
 import { useNavigate } from 'react-router-dom'
+import { usePersistentState } from '@/hooks/use-persistent-state'
 
 export function ImportModal({
   open,
@@ -20,9 +31,18 @@ export function ImportModal({
   open: boolean
   onOpenChange: (o: boolean) => void
 }) {
-  const [step, setStep] = useState<1 | 2>(1)
+  const [step, setStep] = usePersistentState<1 | 2>('importer_step', 1)
+  const [localItems, setLocalItems] = usePersistentState<PreviewItem[]>('importer_localItems', [])
   const [items, setItems] = useState<PreviewItem[]>([])
+
+  const [conflictItems, setConflictItems] = useState<PreviewItem[] | null>(null)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (localItems.length === 0 && step === 2 && items.length === 0) {
+      setStep(1)
+    }
+  }, [localItems.length, step, items.length, setStep])
 
   const handleDataParsed = (finData: string[][] | null, opData: string[][] | null) => {
     const allItems: PreviewItem[] = []
@@ -186,40 +206,94 @@ export function ImportModal({
     if (finData && finData.length > 1) processGrid(finData, 'Financeiro')
     if (opData && opData.length > 1) processGrid(opData, 'Operacional')
 
-    setItems(allItems)
+    if (localItems.length > 0) {
+      setConflictItems(allItems)
+    } else {
+      setItems(allItems)
+      setStep(2)
+    }
+  }
+
+  const handleDiscardAndStartNew = () => {
+    setLocalItems([])
+    if (conflictItems) {
+      setItems(conflictItems)
+    }
     setStep(2)
+    setConflictItems(null)
+  }
+
+  const handleResumePending = () => {
+    setStep(2)
+    setConflictItems(null)
+  }
+
+  const handleManualDiscard = () => {
+    setLocalItems([])
+    setItems([])
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        onOpenChange(o)
-        if (!o) setTimeout(() => setStep(1), 300)
-      }}
-    >
-      <DialogContent className="max-w-[95vw] lg:max-w-6xl h-[85vh] flex flex-col p-4 sm:p-6">
-        <DialogHeader className="shrink-0">
-          <DialogTitle>Importação Dupla e Triagem</DialogTitle>
-          <DialogDescription>
-            Consolide dados do Financeiro e Operacional simultaneamente.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex-1 overflow-hidden min-h-0 pt-4">
-          {step === 1 ? (
-            <ImportInput onDataParsed={handleDataParsed} />
-          ) : (
-            <ImportPreview
-              items={items}
-              onBack={() => setStep(1)}
-              onComplete={() => {
-                onOpenChange(false)
-                setTimeout(() => navigate('/relatorios'), 150)
-              }}
-            />
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(o) => {
+          onOpenChange(o)
+        }}
+      >
+        <DialogContent className="max-w-[95vw] lg:max-w-6xl h-[85vh] flex flex-col p-4 sm:p-6">
+          <DialogHeader className="shrink-0">
+            <DialogTitle>Importação Dupla e Triagem</DialogTitle>
+            <DialogDescription>
+              Consolide dados do Financeiro e Operacional simultaneamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden min-h-0 pt-4">
+            {step === 1 ? (
+              <ImportInput
+                onDataParsed={handleDataParsed}
+                hasPending={localItems.length > 0}
+                onResume={() => setStep(2)}
+                onDiscard={handleManualDiscard}
+              />
+            ) : (
+              <ImportPreview
+                items={items}
+                localItems={localItems}
+                setLocalItems={setLocalItems}
+                onBack={() => setStep(1)}
+                onComplete={() => {
+                  setLocalItems([])
+                  setStep(1)
+                  onOpenChange(false)
+                  setTimeout(() => navigate('/relatorios'), 150)
+                }}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!conflictItems} onOpenChange={(o) => !o && setConflictItems(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Importação Pendente Encontrada</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você possui uma importação em andamento que ainda não foi concluída. Deseja continuar
+              de onde parou ou descartar os dados antigos e iniciar esta nova importação?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleResumePending}>Continuar Pendente</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDiscardAndStartNew}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Descartar e Iniciar Nova
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

@@ -3,14 +3,18 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
-import { FileText, CheckCircle2, UploadCloud } from 'lucide-react'
+import { FileText, CheckCircle2, UploadCloud, AlertCircle } from 'lucide-react'
 import { usePersistentState } from '@/hooks/use-persistent-state'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 interface ImportInputProps {
   onDataParsed: (finData: string[][] | null, opData: string[][] | null) => void
+  hasPending?: boolean
+  onResume?: () => void
+  onDiscard?: () => void
 }
 
-export function ImportInput({ onDataParsed }: ImportInputProps) {
+export function ImportInput({ onDataParsed, hasPending, onResume, onDiscard }: ImportInputProps) {
   const [finText, setFinText] = usePersistentState('import_finText', '')
   const [opText, setOpText] = usePersistentState('import_opText', '')
   const [isDraggingFin, setIsDraggingFin] = useState(false)
@@ -56,8 +60,41 @@ export function ImportInput({ onDataParsed }: ImportInputProps) {
     onDataParsed(finData, opData)
   }
 
+  const handleDiscard = () => {
+    setFinText('')
+    setOpText('')
+    if (onDiscard) onDiscard()
+  }
+
   return (
     <div className="flex flex-col h-full space-y-4">
+      {hasPending && (
+        <Alert className="bg-amber-50 border-amber-200 shrink-0">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800">Importação Pendente</AlertTitle>
+          <AlertDescription className="text-amber-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-2 sm:mt-0">
+            <span>Você tem dados de triagem salvos de uma sessão anterior.</span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDiscard}
+                className="border-amber-300 text-amber-700 hover:bg-amber-100"
+              >
+                Descartar Antiga
+              </Button>
+              <Button
+                size="sm"
+                onClick={onResume}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                Continuar Triagem
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-0">
         {/* Fonte 1: Financeiro */}
         <div className="flex flex-col border border-slate-200 rounded-lg bg-slate-50/50 overflow-hidden">

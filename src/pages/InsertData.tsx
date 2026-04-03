@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { TransactionForm } from '@/components/TransactionForm'
 import { TransactionList } from '@/components/TransactionList'
 import { DashboardSummary } from '@/components/DashboardSummary'
 import { ReconciliationAlert } from '@/components/ReconciliationAlert'
-import { BulkPasteModal } from '@/components/BulkPasteModal'
+import { ImportModal } from '@/components/importer/ImportModal'
 import { Button } from '@/components/ui/button'
 import { ClipboardPaste } from 'lucide-react'
 import { AutoSaveControls } from '@/components/AutoSaveControls'
@@ -11,6 +11,18 @@ import { LatestCheckpointIndicator } from '@/components/LatestCheckpointIndicato
 
 export default function InsertData() {
   const [isBulkOpen, setIsBulkOpen] = useState(false)
+
+  useEffect(() => {
+    const hasPending = localStorage.getItem('autosave_importer_localItems')
+    if (hasPending) {
+      try {
+        const parsed = JSON.parse(hasPending)
+        if (parsed && parsed.length > 0) {
+          setIsBulkOpen(true)
+        }
+      } catch (e) {}
+    }
+  }, [])
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up">
@@ -38,7 +50,7 @@ export default function InsertData() {
         </div>
       </div>
 
-      <BulkPasteModal open={isBulkOpen} onOpenChange={setIsBulkOpen} />
+      <ImportModal open={isBulkOpen} onOpenChange={setIsBulkOpen} />
       <AutoSaveControls />
     </div>
   )

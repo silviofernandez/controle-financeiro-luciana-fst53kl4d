@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -137,16 +137,32 @@ function CategoryCombobox({
 
 interface ImportPreviewProps {
   items: PreviewItem[]
+  localItems: PreviewItem[]
+  setLocalItems: React.Dispatch<React.SetStateAction<PreviewItem[]>>
   onBack: () => void
   onComplete: () => void
 }
 
-export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps) {
+export function ImportPreview({
+  items,
+  localItems,
+  setLocalItems,
+  onBack,
+  onComplete,
+}: ImportPreviewProps) {
   const { transactions, addTransactions } = useTransactions()
   const { user } = useAuth()
-  const [localItems, setLocalItems] = usePersistentState<PreviewItem[]>('importer_localItems', [])
+  const [scrollPos, setScrollPos] = usePersistentState('importer_scroll', 0)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
   const [loading, setLoading] = useState(false)
   const [customCategories, setCustomCategories] = useState<string[]>([])
+
+  useEffect(() => {
+    if (scrollRef.current && scrollPos > 0) {
+      scrollRef.current.scrollTop = scrollPos
+    }
+  }, []) // On mount restore scroll
 
   useEffect(() => {
     if (localItems.length > 0) return
@@ -392,6 +408,10 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
     onComplete()
   }
 
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrollPos(e.currentTarget.scrollTop)
+  }
+
   return (
     <div className="space-y-4 animate-fade-in flex flex-col h-full">
       <div className="flex justify-between items-center shrink-0">
@@ -408,7 +428,11 @@ export function ImportPreview({ items, onBack, onComplete }: ImportPreviewProps)
           </span>
         </div>
       </div>
-      <div className="border rounded-md bg-white flex-1 max-h-[60vh] overflow-y-auto relative">
+      <div
+        className="border rounded-md bg-white flex-1 max-h-[60vh] overflow-y-auto relative"
+        ref={scrollRef}
+        onScroll={handleScroll}
+      >
         <Table>
           <TableHeader className="sticky top-0 bg-slate-50 z-10 shadow-sm">
             <TableRow>

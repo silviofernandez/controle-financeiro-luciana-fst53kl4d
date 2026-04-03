@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-03T14:30:19.445Z",
+  "generatedAt": "2026-04-03T14:31:57.257Z",
   "collections": [
     {
       "name": "users",
@@ -29,19 +29,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": [
@@ -90,11 +85,7 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": [
-            "Receita",
-            "Despesa Fixa",
-            "Despesa Variável"
-          ]
+          "selectValues": ["Receita", "Despesa Fixa", "Despesa Variável"]
         },
         {
           "name": "category",
@@ -132,19 +123,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": [
@@ -186,30 +172,21 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "Empresa",
-            "Pró-labore",
-            "Dividir"
-          ]
+          "selectValues": ["Empresa", "Pró-labore", "Dividir"]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": [

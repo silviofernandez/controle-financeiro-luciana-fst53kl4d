@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-03T20:23:51.643Z",
+  "generatedAt": "2026-04-03T20:50:00.616Z",
   "collections": [
     {
       "name": "users",
@@ -298,7 +298,9 @@
           "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
-      "indexes": []
+      "indexes": [
+        "CREATE INDEX `idx_import_sessions_user_status` ON `import_sessions` (user_id,status)"
+      ]
     }
   ]
 }

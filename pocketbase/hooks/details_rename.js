@@ -5,34 +5,53 @@ routerAdd(
     const id = e.request.pathValue('id')
     const body = e.requestInfo().body
     const newName = body.newName
-    const updateTransactions = body.updateTransactions
+    const oldName = body.oldName
+    const updateAll = body.updateAll === true
 
     if (!newName) {
-      return e.badRequestError('newName is required')
+      throw new BadRequestError('newName is required')
     }
 
-    const detail = $app.findRecordById('details', id)
-    if (!detail) {
-      return e.notFoundError('Detail not found')
-    }
+    return $app.runInTransaction((txApp) => {
+      const detail = txApp.findRecordById('details', id)
 
-    const oldName = detail.get('name')
-
-    detail.set('name', newName)
-    $app.save(detail)
-
-    if (updateTransactions) {
-      const userId = e.auth.id
-      $app
-        .db()
-        .newQuery(
-          'UPDATE transactions SET description = {:newName} WHERE description = {:oldName} AND user_id = {:userId}',
+      // Check if another detail with the same name already exists for this user
+      try {
+        const existing = txApp.findFirstRecordByFilter(
+          'details',
+          'user_id = {:userId} && name = {:name} && id != {:id}',
+          {
+            userId: detail.get('user_id'),
+            name: newName,
+            id: id,
+          },
         )
-        .bind({ newName: newName, oldName: oldName, userId: userId })
-        .execute()
-    }
+        if (existing) {
+          throw new BadRequestError('Detail name already exists')
+        }
+      } catch (_) {
+        // Not found, we can proceed
+      }
 
-    return e.json(200, detail)
+      detail.set('name', newName)
+      txApp.save(detail)
+
+      if (updateAll && oldName) {
+        txApp
+          .db()
+          .newQuery(
+            'UPDATE transactions SET description = {:newName} WHERE description = {:oldName} AND user_id = {:userId}',
+          )
+          .bind({
+            newName: newName,
+            oldName: oldName,
+            userId: detail.get('user_id'),
+          })
+          .execute()
+      }
+
+      return e.json(200, { success: true })
+    })
   },
   $apis.requireAuth(),
 )

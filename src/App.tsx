@@ -26,6 +26,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { DetailsProvider } from './contexts/DetailsContext'
 import { SettingsProvider } from './contexts/SettingsContext'
 import { BudgetProvider } from './contexts/BudgetContext'
+import { CreditCardProvider } from './contexts/CreditCardContext'
 import { AutoSaveProvider } from './contexts/AutoSaveContext'
 import { Loader2 } from 'lucide-react'
 
@@ -78,21 +79,23 @@ const App = () => (
   <AuthProvider>
     <DetailsProvider>
       <SettingsProvider>
-        <TransactionProvider>
-          <CommissionProvider>
-            <BrokerProvider>
-              <BudgetProvider>
-                <AutoSaveProvider>
-                  <TooltipProvider>
-                    <Toaster />
-                    <Sonner />
-                    <RouterProvider router={router} />
-                  </TooltipProvider>
-                </AutoSaveProvider>
-              </BudgetProvider>
-            </BrokerProvider>
-          </CommissionProvider>
-        </TransactionProvider>
+        <CreditCardProvider>
+          <TransactionProvider>
+            <CommissionProvider>
+              <BrokerProvider>
+                <BudgetProvider>
+                  <AutoSaveProvider>
+                    <TooltipProvider>
+                      <Toaster />
+                      <Sonner />
+                      <RouterProvider router={router} />
+                    </TooltipProvider>
+                  </AutoSaveProvider>
+                </BudgetProvider>
+              </BrokerProvider>
+            </CommissionProvider>
+          </TransactionProvider>
+        </CreditCardProvider>
       </SettingsProvider>
     </DetailsProvider>
   </AuthProvider>

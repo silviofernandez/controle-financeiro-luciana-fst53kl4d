@@ -26,6 +26,7 @@ import { toast } from '@/hooks/use-toast'
 import { BrokerSettings } from '@/components/BrokerSettings'
 import { CommissionSettings } from '@/components/CommissionSettings'
 import { DetailsSettings } from '@/components/DetailsSettings'
+import { CreditCardSettings } from '@/components/CreditCardSettings'
 
 export default function Settings() {
   const { categories, addCategory, removeCategory, taggingRules, addRule, removeRule } =
@@ -76,7 +77,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="categories" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 max-w-[1000px] h-auto p-1">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 max-w-[1000px] h-auto p-1">
           <TabsTrigger value="categories" className="text-xs sm:text-sm">
             Categorias
           </TabsTrigger>
@@ -85,6 +86,9 @@ export default function Settings() {
           </TabsTrigger>
           <TabsTrigger value="rules" className="text-xs sm:text-sm">
             Regras
+          </TabsTrigger>
+          <TabsTrigger value="cards" className="text-xs sm:text-sm">
+            Cartões
           </TabsTrigger>
           <TabsTrigger value="collaborators" className="text-xs sm:text-sm">
             Colaboradores
@@ -157,6 +161,10 @@ export default function Settings() {
 
         <TabsContent value="details" className="space-y-4 mt-4">
           <DetailsSettings />
+        </TabsContent>
+
+        <TabsContent value="cards" className="space-y-4 mt-4">
+          <CreditCardSettings />
         </TabsContent>
 
         <TabsContent value="rules" className="space-y-4 mt-4">

@@ -45,6 +45,16 @@ export interface Detail {
   created_at: string
 }
 
+export interface CreditCard {
+  id: string
+  user_id: string
+  name: string
+  type: 'Pessoal' | 'Empresarial'
+  holder: string
+  limit: number
+  created_at: string
+}
+
 export interface Transaction {
   id: string
   tipo: TransactionType
@@ -69,6 +79,7 @@ export interface Transaction {
   juridicoValor?: number
   equipe?: string
   observacoes?: string
+  card_id?: string
   created_at: string
 }
 

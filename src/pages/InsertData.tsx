@@ -10,11 +10,14 @@ import { ClipboardPaste, Eraser } from 'lucide-react'
 import { AutoSaveControls } from '@/components/AutoSaveControls'
 import { LatestCheckpointIndicator } from '@/components/LatestCheckpointIndicator'
 import { DuplicateCleanupModal } from '@/components/DuplicateCleanupModal'
+import { CardImportModal } from '@/components/importer/CardImportModal'
 import { getImportSessionById, getActiveImportSession } from '@/services/import_sessions'
+import { CreditCard } from 'lucide-react'
 
 export default function InsertData() {
   const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false)
+  const [isCardImportOpen, setIsCardImportOpen] = useState(false)
   const location = useLocation()
 
   useEffect(() => {
@@ -75,11 +78,18 @@ export default function InsertData() {
           Limpar Duplicatas
         </Button>
         <Button
+          onClick={() => setIsCardImportOpen(true)}
+          className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
+          <CreditCard className="w-4 h-4" />
+          Fatura de Cartão
+        </Button>
+        <Button
           onClick={() => setIsBulkOpen(true)}
           className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
         >
           <ClipboardPaste className="w-4 h-4" />
-          Importação em Lote (Colar Tabela)
+          Extrato Bancário
         </Button>
       </div>
 
@@ -96,6 +106,7 @@ export default function InsertData() {
       </div>
 
       <ImportModal open={isBulkOpen} onOpenChange={setIsBulkOpen} />
+      <CardImportModal open={isCardImportOpen} onOpenChange={setIsCardImportOpen} />
       <DuplicateCleanupModal open={isDuplicateModalOpen} onOpenChange={setIsDuplicateModalOpen} />
       <AutoSaveControls />
     </div>

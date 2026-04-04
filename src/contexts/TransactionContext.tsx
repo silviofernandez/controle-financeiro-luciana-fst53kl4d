@@ -9,6 +9,10 @@ interface TransactionContextData {
   transactions: Transaction[]
   addTransaction: (t: Omit<Transaction, 'id' | 'created_at'>) => Promise<void>
   addTransactions: (ts: Omit<Transaction, 'id' | 'created_at'>[]) => Promise<void>
+  updateTransaction: (
+    id: string,
+    t: Partial<Omit<Transaction, 'id' | 'created_at'>>,
+  ) => Promise<void>
   deleteTransaction: (id: string) => Promise<void>
   isSyncing: boolean
   syncData: () => Promise<void>
@@ -47,33 +51,37 @@ const mapRecordToTransaction = (record: any): Transaction => {
     banco: record.bank,
     classificacao,
     observacoes: record.observations,
+    card_id: record.card_id,
     created_at: record.created,
   }
 }
 
-const mapTransactionToRecord = (t: Omit<Transaction, 'id' | 'created_at'>, userId: string) => {
-  let pbType = 'Despesa Variável'
-  if (t.tipo === 'receita') {
-    pbType = 'Receita'
-  } else if (t.classificacao === 'fixo') {
-    pbType = 'Despesa Fixa'
+const mapTransactionToRecord = (
+  t: Partial<Omit<Transaction, 'id' | 'created_at'>>,
+  userId: string,
+) => {
+  const rec: any = { user_id: userId }
+  if (t.descricao !== undefined) rec.description = t.descricao
+  if (t.valor !== undefined) rec.amount = t.valor
+  if (t.data !== undefined) rec.date = new Date(t.data).toISOString()
+  if (t.tipo !== undefined || t.classificacao !== undefined) {
+    let pbType = 'Despesa Variável'
+    if (t.tipo === 'receita') pbType = 'Receita'
+    else if (t.classificacao === 'fixo') pbType = 'Despesa Fixa'
+    rec.type = pbType
   }
-
-  let pbUnit = t.unidade as string
-  if (pbUnit === 'Jau') pbUnit = 'Jaú'
-  if (pbUnit === 'L. Paulista') pbUnit = 'Lençóis Paulista'
-
-  return {
-    user_id: userId,
-    description: t.descricao,
-    amount: t.valor,
-    date: new Date(t.data).toISOString(),
-    type: pbType,
-    category: t.categoria || 'Outros',
-    unit: pbUnit,
-    bank: t.banco || 'Outros',
-    observations: t.observacoes || '',
+  if (t.categoria !== undefined) rec.category = t.categoria || 'Outros'
+  if (t.unidade !== undefined) {
+    let pbUnit = t.unidade as string
+    if (pbUnit === 'Jau') pbUnit = 'Jaú'
+    if (pbUnit === 'L. Paulista') pbUnit = 'Lençóis Paulista'
+    rec.unit = pbUnit
   }
+  if (t.banco !== undefined) rec.bank = t.banco || 'Outros'
+  if (t.observacoes !== undefined) rec.observations = t.observacoes || ''
+  if (t.card_id !== undefined) rec.card_id = t.card_id || null
+
+  return rec
 }
 
 export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -109,7 +117,9 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (!user) return
     setIsSyncing(true)
     try {
-      await pb.collection('transactions').create(mapTransactionToRecord(t, user.id))
+      const rec = mapTransactionToRecord(t, user.id)
+      if (!rec.type) rec.type = t.tipo === 'receita' ? 'Receita' : 'Despesa Variável'
+      await pb.collection('transactions').create(rec)
       toast({ title: 'Sucesso!', description: 'Lançamento adicionado com sucesso.' })
     } catch (error: any) {
       toast({ title: 'Erro', description: 'Falha ao adicionar.', variant: 'destructive' })
@@ -123,7 +133,9 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setIsSyncing(true)
     try {
       for (const t of ts) {
-        await pb.collection('transactions').create(mapTransactionToRecord(t, user.id))
+        const rec = mapTransactionToRecord(t, user.id)
+        if (!rec.type) rec.type = t.tipo === 'receita' ? 'Receita' : 'Despesa Variável'
+        await pb.collection('transactions').create(rec)
       }
       toast({ title: 'Sucesso!', description: `${ts.length} lançamentos adicionados com sucesso.` })
     } catch (error: any) {
@@ -135,6 +147,23 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     } finally {
       setIsSyncing(false)
       loadData()
+    }
+  }
+
+  const updateTransaction = async (
+    id: string,
+    t: Partial<Omit<Transaction, 'id' | 'created_at'>>,
+  ) => {
+    if (!user) return
+    setIsSyncing(true)
+    try {
+      const rec = mapTransactionToRecord(t, user.id)
+      await pb.collection('transactions').update(id, rec)
+      toast({ title: 'Atualizado', description: 'Lançamento salvo com sucesso.' })
+    } catch (error) {
+      toast({ title: 'Erro', description: 'Falha ao atualizar.', variant: 'destructive' })
+    } finally {
+      setIsSyncing(false)
     }
   }
 
@@ -161,6 +190,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         transactions,
         addTransaction,
         addTransactions,
+        updateTransaction,
         deleteTransaction,
         isSyncing,
         syncData,

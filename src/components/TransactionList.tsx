@@ -11,16 +11,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Input } from './ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { formatCurrency } from '@/lib/utils'
-import { UNIDADES, BANCOS } from '@/types'
+import { Transaction, UNIDADES, BANCOS } from '@/types'
+import { TransactionEditorSheet } from './TransactionEditorSheet'
+import { useCreditCards } from '@/contexts/CreditCardContext'
 
 export function TransactionList() {
   const { transactions, deleteTransaction } = useTransactions()
+  const { cards } = useCreditCards()
   const [selectedMonth, setSelectedMonth] = useState<Date>(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   )
   const [filterUnidade, setFilterUnidade] = useState<string>('all')
   const [filterBanco, setFilterBanco] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null)
 
   const handlePrevMonth = () => {
     setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
@@ -229,11 +233,12 @@ export function TransactionList() {
                 {filteredTransactions.map((t) => (
                   <TableRow
                     key={t.id}
-                    className={`group transition-colors hover:bg-slate-50/80 ${
+                    className={`group transition-colors cursor-pointer hover:bg-slate-50/80 ${
                       t.isCheckpoint
                         ? 'bg-emerald-50/40 border-l-4 border-l-emerald-500 hover:bg-emerald-50/60'
                         : 'border-l-4 border-l-transparent hover:border-l-blue-200'
                     }`}
+                    onClick={() => !t.isCheckpoint && setEditingTx(t)}
                   >
                     <TableCell className="text-xs text-slate-500 whitespace-nowrap font-medium">
                       {formatDateSafe(t.data)}
@@ -260,12 +265,22 @@ export function TransactionList() {
                       <span className="text-xs text-slate-600 font-medium">{t.unidade}</span>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      <Badge
-                        variant="secondary"
-                        className="font-normal text-[10px] bg-slate-100 text-slate-600"
-                      >
-                        {t.banco}
-                      </Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge
+                          variant="secondary"
+                          className="font-normal text-[10px] w-fit bg-slate-100 text-slate-600"
+                        >
+                          {t.banco}
+                        </Badge>
+                        {t.card_id && cards.find((c) => c.id === t.card_id) && (
+                          <Badge
+                            variant="outline"
+                            className="font-normal text-[9px] w-fit text-emerald-600 border-emerald-200 bg-emerald-50/50"
+                          >
+                            {cards.find((c) => c.id === t.card_id)?.name}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell max-w-[150px]">
                       {t.observacoes ? (
@@ -310,7 +325,10 @@ export function TransactionList() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => deleteTransaction(t.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteTransaction(t.id)
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -322,6 +340,7 @@ export function TransactionList() {
           </div>
         )}
       </CardContent>
+      <TransactionEditorSheet transaction={editingTx} onClose={() => setEditingTx(null)} />
     </Card>
   )
 }

@@ -6,13 +6,15 @@ import { DashboardSummary } from '@/components/DashboardSummary'
 import { ReconciliationAlert } from '@/components/ReconciliationAlert'
 import { ImportModal } from '@/components/importer/ImportModal'
 import { Button } from '@/components/ui/button'
-import { ClipboardPaste } from 'lucide-react'
+import { ClipboardPaste, Eraser } from 'lucide-react'
 import { AutoSaveControls } from '@/components/AutoSaveControls'
 import { LatestCheckpointIndicator } from '@/components/LatestCheckpointIndicator'
+import { DuplicateCleanupModal } from '@/components/DuplicateCleanupModal'
 import { getImportSessionById, getActiveImportSession } from '@/services/import_sessions'
 
 export default function InsertData() {
   const [isBulkOpen, setIsBulkOpen] = useState(false)
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false)
   const location = useLocation()
 
   useEffect(() => {
@@ -63,7 +65,15 @@ export default function InsertData() {
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up">
       <ReconciliationAlert key="reconciliation-alert" />
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3 flex-wrap">
+        <Button
+          variant="outline"
+          onClick={() => setIsDuplicateModalOpen(true)}
+          className="gap-2 text-slate-700 hover:text-slate-900 border-slate-300"
+        >
+          <Eraser className="w-4 h-4" />
+          Limpar Duplicatas
+        </Button>
         <Button
           onClick={() => setIsBulkOpen(true)}
           className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
@@ -86,6 +96,7 @@ export default function InsertData() {
       </div>
 
       <ImportModal open={isBulkOpen} onOpenChange={setIsBulkOpen} />
+      <DuplicateCleanupModal open={isDuplicateModalOpen} onOpenChange={setIsDuplicateModalOpen} />
       <AutoSaveControls />
     </div>
   )

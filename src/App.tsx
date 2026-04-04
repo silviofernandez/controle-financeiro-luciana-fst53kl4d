@@ -14,6 +14,7 @@ import Layout from './components/Layout'
 import InsertData from './pages/InsertData'
 import Audit from './pages/Audit'
 import Imports from './pages/Imports'
+import FinancialAnalysis from './pages/FinancialAnalysis'
 
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -69,6 +70,7 @@ const router = createBrowserRouter([
       { path: 'comissoes', element: <Commissions /> },
       { path: 'importacoes', element: <Imports /> },
       { path: 'auditoria', element: <Audit /> },
+      { path: 'analise-financeira', element: <FinancialAnalysis /> },
       { path: 'configuracoes', element: <Settings /> },
     ],
   },

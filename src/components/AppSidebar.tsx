@@ -29,11 +29,12 @@ const items = [
   { title: 'Custos Operacionais', url: '/custos-operacionais', icon: Receipt },
   { title: 'Importações', url: '/importacoes', icon: FileText },
   { title: 'Auditoria', url: '/auditoria', icon: History },
+  { title: 'Análise Financeira', url: '/analise-financeira', icon: LineChart },
   { title: 'Relatórios', url: '/relatorios', icon: PieChart },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ]
 
-import { FileText } from 'lucide-react'
+import { FileText, LineChart } from 'lucide-react'
 
 export function AppSidebar() {
   const location = useLocation()

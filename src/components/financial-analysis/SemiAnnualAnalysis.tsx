@@ -17,9 +17,18 @@ export function SemiAnnualAnalysis({ transactions }: { transactions: Transaction
   yearTxs.forEach((t) => {
     const m = getMonth(parseISO(t.date))
     const isH1 = m < 6
-    if (t.type === 'Receita') isH1 ? (h1Rev += t.amount) : (h2Rev += t.amount)
-    if (t.type === 'Despesa Fixa') isH1 ? (h1Fixed += t.amount) : (h2Fixed += t.amount)
-    if (t.type === 'Despesa Variável') isH1 ? (h1Var += t.amount) : (h2Var += t.amount)
+    if (t.type === 'Receita') {
+      if (isH1) h1Rev += t.amount
+      else h2Rev += t.amount
+    }
+    if (t.type === 'Despesa Fixa') {
+      if (isH1) h1Fixed += t.amount
+      else h2Fixed += t.amount
+    }
+    if (t.type === 'Despesa Variável') {
+      if (isH1) h1Var += t.amount
+      else h2Var += t.amount
+    }
   })
 
   const h1Margin = h1Rev - h1Var

@@ -4,17 +4,21 @@ import { toast } from '@/hooks/use-toast'
 import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from './AuthContext'
+import { ToastAction } from '@/components/ui/toast'
 
 interface TransactionContextData {
   transactions: Transaction[]
   addTransaction: (t: Omit<Transaction, 'id' | 'created_at'>) => Promise<void>
-  addTransactions: (ts: Omit<Transaction, 'id' | 'created_at'>[]) => Promise<void>
+  addTransactions: (
+    ts: Omit<Transaction, 'id' | 'created_at'>[],
+  ) => Promise<{ successes: number; failures: any[] }>
   updateTransaction: (
     id: string,
     t: Partial<Omit<Transaction, 'id' | 'created_at'>>,
   ) => Promise<void>
   deleteTransaction: (id: string) => Promise<void>
   isSyncing: boolean
+  syncProgress: { current: number; total: number } | null
   syncData: () => Promise<void>
 }
 
@@ -88,6 +92,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const { user } = useAuth()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isSyncing, setIsSyncing] = useState(false)
+  const [syncProgress, setSyncProgress] = useState<{ current: number; total: number } | null>(null)
 
   const loadData = useCallback(async () => {
     if (!user) return
@@ -129,25 +134,81 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }
 
   const addTransactions = async (ts: Omit<Transaction, 'id' | 'created_at'>[]) => {
-    if (!user) return
+    if (!user) return { successes: 0, failures: [] }
     setIsSyncing(true)
+    setSyncProgress({ current: 0, total: ts.length })
+
+    let successes = 0
+    const failures: Omit<Transaction, 'id' | 'created_at'>[] = []
+    let currentProcessed = 0
+
     try {
-      for (const t of ts) {
-        const rec = mapTransactionToRecord(t, user.id)
-        if (!rec.type) rec.type = t.tipo === 'receita' ? 'Receita' : 'Despesa Variável'
-        await pb.collection('transactions').create(rec)
+      const BATCH_SIZE = 20
+      for (let i = 0; i < ts.length; i += BATCH_SIZE) {
+        const batch = ts.slice(i, i + BATCH_SIZE)
+
+        const promises = batch.map(async (t) => {
+          const rec = mapTransactionToRecord(t, user.id)
+          if (!rec.type) rec.type = t.tipo === 'receita' ? 'Receita' : 'Despesa Variável'
+
+          let attempts = 0
+          let success = false
+          while (attempts < 4 && !success) {
+            // 1 initial + 3 retries
+            try {
+              await pb.collection('transactions').create(rec)
+              success = true
+            } catch (error) {
+              attempts++
+              if (attempts >= 4) {
+                throw error
+              }
+              await new Promise((resolve) => setTimeout(resolve, 1000))
+            }
+          }
+          return t
+        })
+
+        const results = await Promise.allSettled(promises)
+
+        results.forEach((res, index) => {
+          if (res.status === 'fulfilled') {
+            successes++
+          } else {
+            failures.push(batch[index])
+          }
+        })
+
+        currentProcessed += batch.length
+        setSyncProgress({ current: Math.min(currentProcessed, ts.length), total: ts.length })
       }
-      toast({ title: 'Sucesso!', description: `${ts.length} lançamentos adicionados com sucesso.` })
+
+      if (failures.length === 0) {
+        toast({
+          title: 'Sucesso!',
+          description: `${successes} de ${ts.length} lançamentos importados com sucesso. 0 falharam.`,
+        })
+      } else {
+        toast({
+          title: 'Importação concluída com erros',
+          description: `${successes} de ${ts.length} lançamentos importados com sucesso. ${failures.length} falharam.`,
+          variant: 'destructive',
+          action: (
+            <ToastAction altText="Tentar novamente" onClick={() => addTransactions(failures)}>
+              Tentar novamente
+            </ToastAction>
+          ),
+        })
+      }
     } catch (error: any) {
-      toast({
-        title: 'Erro',
-        description: 'Falha ao importar alguns lançamentos.',
-        variant: 'destructive',
-      })
+      console.error(error)
     } finally {
       setIsSyncing(false)
+      setSyncProgress(null)
       loadData()
     }
+
+    return { successes, failures }
   }
 
   const updateTransaction = async (
@@ -193,6 +254,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         updateTransaction,
         deleteTransaction,
         isSyncing,
+        syncProgress,
         syncData,
       }}
     >

@@ -317,7 +317,7 @@ export function ImportPreview({
   onBack,
   onComplete,
 }: ImportPreviewProps) {
-  const { transactions, addTransactions } = useTransactions()
+  const { transactions, addTransactions, syncProgress } = useTransactions()
   const { user } = useAuth()
   const { details } = useDetails()
   const [scrollPos, setScrollPos] = usePersistentState('importer_scroll', 0)
@@ -624,10 +624,6 @@ export function ImportPreview({
     setSessionId(null)
 
     setLoading(false)
-    toast({
-      title: 'Concluído',
-      description: `${toAdd.length} lançamentos importados com sucesso.`,
-    })
     onComplete()
   }
 
@@ -647,11 +643,18 @@ export function ImportPreview({
             className="gap-2"
           >
             {loading ? (
-              <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              syncProgress ? (
+                <span className="text-xs">
+                  Salvando lançamento {syncProgress.current} de {syncProgress.total}...
+                </span>
+              ) : (
+                <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              )
             ) : (
-              <CheckCircle2 className="w-3 h-3" />
+              <>
+                <CheckCircle2 className="w-3 h-3" /> Salvar Tudo Agora
+              </>
             )}
-            Salvar Tudo Agora
           </Button>
         </div>
         <div className="flex gap-4">
@@ -912,11 +915,21 @@ export function ImportPreview({
           className="gap-2 px-8"
         >
           {loading ? (
-            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            syncProgress ? (
+              <span>
+                Salvando lançamento {syncProgress.current} de {syncProgress.total}...
+              </span>
+            ) : (
+              <>
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                Processando...
+              </>
+            )
           ) : (
-            <CheckCircle2 className="w-4 h-4" />
+            <>
+              <CheckCircle2 className="w-4 h-4" /> Confirmar Importação
+            </>
           )}
-          Confirmar Importação
         </Button>
       </div>
 

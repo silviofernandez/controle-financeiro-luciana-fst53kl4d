@@ -1,157 +1,109 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { TrendingUp, TrendingDown, DollarSign, Activity, Percent, Scale } from 'lucide-react'
-import { formatCurrency } from '@/lib/dashboard-utils'
-import { DESPESAS_FIXAS, DESPESAS_VARIAVEIS } from '@/types'
+import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 interface SummaryCardsProps {
   transactions: any[]
-  prevTransactions: any[]
+  prevTransactions?: any[]
+  isLoading?: boolean
 }
 
-export function SummaryCards({ transactions }: SummaryCardsProps) {
-  const calcKPIs = (txs: any[]) => {
-    const faturamento = txs
-      .filter((t) => t.tipo === 'receita' && !t.isCheckpoint)
-      .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
-
-    const custoFixo = txs
-      .filter(
-        (t) =>
-          t.tipo === 'despesa' &&
-          !t.isCheckpoint &&
-          (DESPESAS_FIXAS.includes(t.categoria) || t.classificacao === 'fixo'),
-      )
-      .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
-
-    const custoVariavelBase = txs
-      .filter(
-        (t) =>
-          t.tipo === 'despesa' &&
-          !t.isCheckpoint &&
-          (DESPESAS_VARIAVEIS.includes(t.categoria) || t.classificacao === 'variavel'),
-      )
-      .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
-
-    const otherCosts = txs
-      .filter(
-        (t) =>
-          t.tipo === 'despesa' &&
-          !t.isCheckpoint &&
-          !DESPESAS_FIXAS.includes(t.categoria) &&
-          !DESPESAS_VARIAVEIS.includes(t.categoria) &&
-          t.classificacao !== 'fixo' &&
-          t.classificacao !== 'variavel',
-      )
-      .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
-
-    const custoVariavel = custoVariavelBase + otherCosts
-
-    const margemContribuicao = faturamento - custoVariavel
-    const margemContribuicaoPerc = faturamento > 0 ? (margemContribuicao / faturamento) * 100 : 0
-    const pontoEquilibrio =
-      margemContribuicaoPerc > 0 ? custoFixo / (margemContribuicaoPerc / 100) : 0
-    const resultadoLiquido = faturamento - (custoFixo + custoVariavel)
-
-    return {
-      faturamento,
-      custoFixo,
-      custoVariavel,
-      margemContribuicaoPerc,
-      pontoEquilibrio,
-      resultadoLiquido,
-    }
+export function SummaryCards({ transactions, isLoading }: SummaryCardsProps) {
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-3">
+        <Skeleton className="h-[140px] w-full rounded-xl" />
+        <Skeleton className="h-[140px] w-full rounded-xl" />
+        <Skeleton className="h-[140px] w-full rounded-xl" />
+      </div>
+    )
   }
 
-  const data = calcKPIs(transactions)
+  const receitas = transactions
+    .filter((t) => t.tipo === 'receita')
+    .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
+
+  const despesas = transactions
+    .filter((t) => t.tipo === 'despesa_fixa' || t.tipo === 'despesa_variavel')
+    .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
+
+  const resultado = receitas - despesas
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value)
+  }
+
+  const isPositive = resultado >= 0
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-      <Card className="border-emerald-100 shadow-sm bg-emerald-50/30">
+    <div className="grid gap-4 md:grid-cols-3">
+      <Card className="border-emerald-100 shadow-sm bg-emerald-50/30 transition-colors hover:bg-emerald-50/50">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 pt-4">
-          <CardTitle className="text-[11px] font-bold text-emerald-800 uppercase">
-            Faturamento
+          <CardTitle className="text-sm font-semibold text-emerald-800 uppercase tracking-wider">
+            Receitas
           </CardTitle>
-          <TrendingUp className="h-4 w-4 text-emerald-600" />
+          <div className="p-2 bg-emerald-100 rounded-full">
+            <TrendingUp className="h-4 w-4 text-emerald-600" />
+          </div>
         </CardHeader>
         <CardContent className="px-4 pb-4">
-          <div className="text-lg font-bold text-emerald-700">
-            {formatCurrency(data.faturamento)}
+          <div className="text-3xl font-bold text-emerald-700 tracking-tight">
+            {formatCurrency(receitas)}
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border-indigo-100 shadow-sm bg-indigo-50/30">
+      <Card className="border-rose-100 shadow-sm bg-rose-50/30 transition-colors hover:bg-rose-50/50">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 pt-4">
-          <CardTitle className="text-[11px] font-bold text-indigo-800 uppercase">
-            Custo Fixo
+          <CardTitle className="text-sm font-semibold text-rose-800 uppercase tracking-wider">
+            Despesas
           </CardTitle>
-          <Activity className="h-4 w-4 text-indigo-600" />
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <div className="text-lg font-bold text-indigo-700">{formatCurrency(data.custoFixo)}</div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-amber-100 shadow-sm bg-amber-50/30">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 pt-4">
-          <CardTitle className="text-[11px] font-bold text-amber-800 uppercase">
-            Custo Variável
-          </CardTitle>
-          <TrendingDown className="h-4 w-4 text-amber-600" />
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <div className="text-lg font-bold text-amber-700">
-            {formatCurrency(data.custoVariavel)}
+          <div className="p-2 bg-rose-100 rounded-full">
+            <TrendingDown className="h-4 w-4 text-rose-600" />
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-blue-100 shadow-sm bg-blue-50/30">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 pt-4">
-          <CardTitle className="text-[11px] font-bold text-blue-800 uppercase">
-            Margem Contrib.
-          </CardTitle>
-          <Percent className="h-4 w-4 text-blue-600" />
         </CardHeader>
         <CardContent className="px-4 pb-4">
-          <div className="text-lg font-bold text-blue-700">
-            {data.margemContribuicaoPerc.toFixed(1)}%
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-slate-200 shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 pt-4">
-          <CardTitle className="text-[11px] font-bold text-slate-600 uppercase">
-            Ponto Equilíbrio
-          </CardTitle>
-          <Scale className="h-4 w-4 text-slate-400" />
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <div className="text-lg font-bold text-slate-700">
-            {formatCurrency(data.pontoEquilibrio)}
+          <div className="text-3xl font-bold text-rose-700 tracking-tight">
+            {formatCurrency(despesas)}
           </div>
         </CardContent>
       </Card>
 
       <Card
-        className={`shadow-sm border-${data.resultadoLiquido >= 0 ? 'emerald' : 'rose'}-200 bg-${data.resultadoLiquido >= 0 ? 'emerald' : 'rose'}-50/30`}
+        className={cn(
+          'shadow-sm transition-colors',
+          isPositive
+            ? 'border-emerald-200 bg-emerald-50/30 hover:bg-emerald-50/50'
+            : 'border-rose-200 bg-rose-50/30 hover:bg-rose-50/50',
+        )}
       >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 pt-4">
           <CardTitle
-            className={`text-[11px] font-bold uppercase text-${data.resultadoLiquido >= 0 ? 'emerald' : 'rose'}-800`}
+            className={cn(
+              'text-sm font-semibold uppercase tracking-wider',
+              isPositive ? 'text-emerald-800' : 'text-rose-800',
+            )}
           >
-            Res. Líquido
+            Resultado
           </CardTitle>
-          <DollarSign
-            className={`h-4 w-4 text-${data.resultadoLiquido >= 0 ? 'emerald' : 'rose'}-600`}
-          />
+          <div className={cn('p-2 rounded-full', isPositive ? 'bg-emerald-100' : 'bg-rose-100')}>
+            <DollarSign
+              className={cn('h-4 w-4', isPositive ? 'text-emerald-600' : 'text-rose-600')}
+            />
+          </div>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <div
-            className={`text-lg font-bold text-${data.resultadoLiquido >= 0 ? 'emerald' : 'rose'}-700`}
+            className={cn(
+              'text-3xl font-bold tracking-tight',
+              isPositive ? 'text-emerald-700' : 'text-rose-700',
+            )}
           >
-            {formatCurrency(data.resultadoLiquido)}
+            {formatCurrency(resultado)}
           </div>
         </CardContent>
       </Card>

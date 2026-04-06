@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { format, parseISO, startOfDay, startOfMonth, endOfMonth } from 'date-fns'
+import { useState, useEffect, useMemo } from 'react'
+import { format, parseISO, startOfDay, startOfMonth, endOfMonth, endOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { DateRange } from 'react-day-picker'
 import { Calendar as CalendarIcon, Download, FileText } from 'lucide-react'
@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
-import { useTransactions } from '@/contexts/TransactionContext'
+import { api } from '@/lib/api'
 
 import { SummaryCards } from '@/components/dashboard/SummaryCards'
 import { DueDateAlerts } from '@/components/dashboard/DueDateAlerts'
@@ -20,37 +20,61 @@ import { LatestCheckpointIndicator } from '@/components/LatestCheckpointIndicato
 
 export default function Index() {
   const { toast } = useToast()
-  const { transactions: contextTransactions } = useTransactions() || { transactions: [] }
-  const rawTransactions = contextTransactions || []
+  const [apiTransactions, setApiTransactions] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   })
 
+  useEffect(() => {
+    const fetchLancamentos = async () => {
+      setIsLoading(true)
+      try {
+        const data = await api.lancamentos.listar()
+        setApiTransactions(Array.isArray(data) ? data : [])
+      } catch (error) {
+        console.error('Failed to fetch API transactions', error)
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao carregar dados',
+          description: 'Não foi possível buscar as transações da API.',
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchLancamentos()
+  }, [toast])
+
   const { periodTransactions, prevTransactions } = useMemo(() => {
-    const valid = rawTransactions.filter((t: any) => !t.isCheckpoint)
+    const valid = apiTransactions.filter((t: any) => !t.isCheckpoint)
     if (!dateRange?.from) return { periodTransactions: valid, prevTransactions: [] }
 
     const from = startOfDay(dateRange.from)
-    const to = dateRange.to ? startOfDay(dateRange.to) : from
+    const to = dateRange.to ? endOfDay(dateRange.to) : endOfDay(from)
 
     const diff = to.getTime() - from.getTime()
     const prevFrom = new Date(from.getTime() - diff - 24 * 60 * 60 * 1000)
     const prevTo = new Date(from.getTime() - 24 * 60 * 60 * 1000)
 
     const current = valid.filter((t: any) => {
-      const d = parseISO(t.data)
+      const dateStr = t.data_lancamento || t.data || t.date
+      if (!dateStr) return false
+      const d = parseISO(dateStr)
       return d >= from && d <= to
     })
 
     const prev = valid.filter((t: any) => {
-      const d = parseISO(t.data)
+      const dateStr = t.data_lancamento || t.data || t.date
+      if (!dateStr) return false
+      const d = parseISO(dateStr)
       return d >= prevFrom && d <= prevTo
     })
 
     return { periodTransactions: current, prevTransactions: prev }
-  }, [rawTransactions, dateRange])
+  }, [apiTransactions, dateRange])
 
   const handleExportExcel = () => {
     const headers = [
@@ -65,14 +89,16 @@ export default function Index() {
     ]
     const csvContent = periodTransactions.map((t: any) =>
       [
-        t.data ? format(parseISO(t.data), 'dd/MM/yyyy') : '',
+        t.data_lancamento ? format(parseISO(t.data_lancamento), 'dd/MM/yyyy') : '',
         t.tipo || '',
-        t.categoria || '',
+        t.categoria_id || t.categoria || '',
         t.descricao || '',
         t.valor || 0,
-        t.unidade || '',
+        t.unidade_id || t.unidade || '',
         t.banco || '',
-        t.observacoes ? `"${t.observacoes.replace(/"/g, '""')}"` : '',
+        t.observacao || t.observacoes
+          ? `"${(t.observacao || t.observacoes).replace(/"/g, '""')}"`
+          : '',
       ].join(';'),
     )
     const csvStr = [headers.join(';'), ...csvContent].join('\n')
@@ -148,14 +174,14 @@ export default function Index() {
         </div>
       </div>
 
-      <SummaryCards transactions={periodTransactions} prevTransactions={prevTransactions} />
+      <SummaryCards transactions={periodTransactions} isLoading={isLoading} />
 
       <div className="grid gap-6 md:grid-cols-3 items-stretch">
         <div className="md:col-span-2">
           <IncomeExpenseChart transactions={periodTransactions} dateRange={dateRange} />
         </div>
         <div className="md:col-span-1">
-          <DueDateAlerts transactions={rawTransactions} />
+          <DueDateAlerts transactions={apiTransactions} />
         </div>
       </div>
 

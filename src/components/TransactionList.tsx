@@ -37,17 +37,23 @@ export function TransactionList() {
   const formattedMonthTitle = format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR })
 
   const filteredTransactions = transactions.filter((t) => {
-    const matchesUnidade = filterUnidade === 'all' || t.unidade === filterUnidade
+    const matchesUnidade =
+      filterUnidade === 'all' || (t.unidade_nome || t.unidade) === filterUnidade
     const matchesBanco = filterBanco === 'all' || t.banco === filterBanco
+
+    const catSearchStr = (t.categoria_nome || t.categoria || '').toLowerCase()
+    const descSearchStr = typeof t.descricao === 'string' ? t.descricao.toLowerCase() : ''
+
     const matchesSearch =
       !searchTerm ||
-      (typeof t.descricao === 'string' &&
-        t.descricao.toLowerCase().includes(searchTerm.toLowerCase()))
+      descSearchStr.includes(searchTerm.toLowerCase()) ||
+      catSearchStr.includes(searchTerm.toLowerCase())
 
     let matchesMonth = false
-    if (t.data) {
+    const dateToUse = t.data_lancamento || t.data
+    if (dateToUse) {
       try {
-        const tDate = typeof t.data === 'string' ? parseISO(t.data) : new Date(t.data)
+        const tDate = typeof dateToUse === 'string' ? parseISO(dateToUse) : new Date(dateToUse)
         if (!isNaN(tDate.getTime())) {
           matchesMonth = isSameMonth(tDate, selectedMonth)
         }
@@ -65,7 +71,8 @@ export function TransactionList() {
     filteredTransactions.forEach((t) => {
       if (!t.isCheckpoint) {
         if (t.tipo === 'receita') receitas += Number(t.valor) || 0
-        if (t.tipo === 'despesa') despesas += Number(t.valor) || 0
+        if (t.tipo === 'despesa' || t.tipo === 'despesa_fixa' || t.tipo === 'despesa_variavel')
+          despesas += Number(t.valor) || 0
       }
     })
     return { receitas, despesas, saldo: receitas - despesas }
@@ -76,7 +83,7 @@ export function TransactionList() {
       if (!dateString || typeof dateString !== 'string') return '-'
       const date = parseISO(dateString)
       if (isNaN(date.getTime())) return '-'
-      return format(date, 'dd/MM/yy', { locale: ptBR })
+      return format(date, 'dd/MM/yyyy', { locale: ptBR })
     } catch {
       return '-'
     }
@@ -212,6 +219,9 @@ export function TransactionList() {
                   </TableHead>
                   <TableHead className="min-w-[180px] text-xs font-semibold">Histórico</TableHead>
                   <TableHead className="hidden md:table-cell text-xs font-semibold">
+                    Categoria
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell text-xs font-semibold">
                     Unidade
                   </TableHead>
                   <TableHead className="hidden lg:table-cell text-xs font-semibold">
@@ -241,7 +251,7 @@ export function TransactionList() {
                     onClick={() => !t.isCheckpoint && setEditingTx(t)}
                   >
                     <TableCell className="text-xs text-slate-500 whitespace-nowrap font-medium">
-                      {formatDateSafe(t.data)}
+                      {formatDateSafe(t.data_lancamento || t.data)}
                     </TableCell>
                     <TableCell>
                       <span
@@ -251,7 +261,10 @@ export function TransactionList() {
                       </span>
                       <div className="flex md:hidden gap-1 mt-1.5 flex-wrap">
                         <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-white/50">
-                          {t.unidade}
+                          {t.categoria_nome || t.categoria || 'Sem categoria'}
+                        </Badge>
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-white/50">
+                          {t.unidade_nome || t.unidade}
                         </Badge>
                         <Badge
                           variant="secondary"
@@ -262,7 +275,14 @@ export function TransactionList() {
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <span className="text-xs text-slate-600 font-medium">{t.unidade}</span>
+                      <span className="text-xs text-slate-600 font-medium">
+                        {t.categoria_nome || t.categoria || '-'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <span className="text-xs text-slate-600 font-medium">
+                        {t.unidade_nome || t.unidade || '-'}
+                      </span>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       <div className="flex flex-col gap-1">
@@ -299,12 +319,40 @@ export function TransactionList() {
                       )}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-center">
-                      {t.tipo === 'despesa' && t.classificacao && !t.isCheckpoint && (
+                      {!t.isCheckpoint && t.tipo === 'receita' && (
                         <Badge
                           variant="outline"
-                          className={`font-medium text-[9px] uppercase tracking-wider ${t.classificacao === 'fixo' ? 'text-indigo-600 border-indigo-200 bg-indigo-50/50' : 'text-amber-600 border-amber-200 bg-amber-50/50'}`}
+                          className="font-medium text-[9px] uppercase tracking-wider text-green-600 border-green-200 bg-green-50/50"
                         >
-                          {t.classificacao === 'fixo' ? 'Fixo' : 'Variável'}
+                          Receita
+                        </Badge>
+                      )}
+                      {!t.isCheckpoint &&
+                        (t.tipo === 'despesa_fixa' ||
+                          (t.tipo === 'despesa' && t.classificacao === 'fixo')) && (
+                          <Badge
+                            variant="outline"
+                            className="font-medium text-[9px] uppercase tracking-wider text-red-600 border-red-200 bg-red-50/50"
+                          >
+                            Fixo
+                          </Badge>
+                        )}
+                      {!t.isCheckpoint &&
+                        (t.tipo === 'despesa_variavel' ||
+                          (t.tipo === 'despesa' && t.classificacao === 'variavel')) && (
+                          <Badge
+                            variant="outline"
+                            className="font-medium text-[9px] uppercase tracking-wider text-amber-600 border-amber-200 bg-amber-50/50"
+                          >
+                            Variável
+                          </Badge>
+                        )}
+                      {!t.isCheckpoint && t.tipo === 'despesa' && !t.classificacao && (
+                        <Badge
+                          variant="outline"
+                          className="font-medium text-[9px] uppercase tracking-wider text-red-600 border-red-200 bg-red-50/50"
+                        >
+                          Despesa
                         </Badge>
                       )}
                     </TableCell>

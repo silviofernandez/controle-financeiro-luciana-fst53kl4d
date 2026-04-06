@@ -85,6 +85,8 @@ export interface Transaction {
   competencia?: string
   unidade_id?: string
   categoria_id?: string
+  categoria_nome?: string
+  unidade_nome?: string
 }
 
 export type RuleValueType = 'percentage' | 'fixed'

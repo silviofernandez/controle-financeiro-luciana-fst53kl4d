@@ -54,9 +54,10 @@ export interface LancamentoPayload {
   valor: number
   tipo: 'receita' | 'despesa_fixa' | 'despesa_variavel'
   data_lancamento: string
-  competencia: string
   unidade_id: string
   categoria_id: string
+  competencia?: string
+  observacao?: string
 }
 
 export const api = {

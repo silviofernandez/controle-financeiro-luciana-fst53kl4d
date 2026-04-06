@@ -16,10 +16,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Transaction, UNIDADES, BANCOS } from '@/types'
-import { useTransactions } from '@/contexts/TransactionContext'
-import { useCreditCards } from '@/contexts/CreditCardContext'
-import { useSettings } from '@/contexts/SettingsContext'
+import { Transaction } from '@/types'
+import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
+import { Button } from './ui/button'
+import { Loader2 } from 'lucide-react'
 
 interface Props {
   transaction: Transaction | null
@@ -27,47 +28,95 @@ interface Props {
 }
 
 export function TransactionEditorSheet({ transaction, onClose }: Props) {
-  const { updateTransaction } = useTransactions()
-  const { cards } = useCreditCards()
-  const { categories } = useSettings()
+  const [formData, setFormData] = useState<Partial<any>>({})
+  const [apiCategorias, setApiCategorias] = useState<any[]>([])
+  const [apiUnidades, setApiUnidades] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
 
-  const [formData, setFormData] = useState<Partial<Transaction>>({})
+  useEffect(() => {
+    api.categorias.listarCategorias().then(setApiCategorias).catch(console.error)
+    api.unidades.listarUnidades().then(setApiUnidades).catch(console.error)
+  }, [])
 
   useEffect(() => {
     if (transaction) {
       setFormData({
-        descricao: transaction.descricao,
-        valor: transaction.valor,
-        data: transaction.data ? transaction.data.split('T')[0] : '',
-        categoria: transaction.categoria,
-        unidade: transaction.unidade,
-        banco: transaction.banco,
-        observacoes: transaction.observacoes || '',
-        card_id: transaction.card_id || 'none',
+        descricao: transaction.descricao || transaction.description || '',
+        valor: transaction.valor || transaction.amount || 0,
+        tipo: transaction.tipo || transaction.type || 'despesa_variavel',
+        data_lancamento:
+          transaction.data_lancamento ||
+          transaction.data?.split('T')[0] ||
+          transaction.date?.split('T')[0] ||
+          '',
+        competencia: transaction.competencia || '',
+        unidade_id: transaction.unidade_id || '',
+        categoria_id: transaction.categoria_id || '',
+        observacao:
+          transaction.observacao || transaction.observacoes || transaction.observations || '',
       })
     }
   }, [transaction])
 
-  const handleChange = (field: keyof Transaction, value: any) => {
+  const handleChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleSave = async () => {
     if (!transaction) return
-    const dataToSave = { ...formData }
-    if (dataToSave.card_id === 'none') dataToSave.card_id = ''
-    await updateTransaction(transaction.id, dataToSave)
-    onClose()
+
+    if (
+      !formData.descricao ||
+      !formData.valor ||
+      !formData.data_lancamento ||
+      !formData.unidade_id ||
+      !formData.categoria_id
+    ) {
+      toast({
+        title: 'Atenção',
+        description: 'Preencha todos os campos obrigatórios.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setLoading(true)
+    try {
+      const payload = {
+        descricao: formData.descricao,
+        valor: typeof formData.valor === 'string' ? parseFloat(formData.valor) : formData.valor,
+        tipo: formData.tipo,
+        data_lancamento: formData.data_lancamento,
+        unidade_id: formData.unidade_id,
+        categoria_id: formData.categoria_id,
+        competencia: formData.competencia || undefined,
+        observacao: formData.observacao || undefined,
+      }
+
+      await api.lancamentos.atualizar(transaction.id, payload)
+      toast({ title: 'Sucesso', description: 'Lançamento atualizado com sucesso!' })
+
+      // Dispatch custom event to notify lists to refresh
+      window.dispatchEvent(new Event('transactions-updated'))
+
+      onClose()
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao atualizar',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <Sheet open={!!transaction} onOpenChange={(open) => !open && handleSave()}>
+    <Sheet open={!!transaction} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="overflow-y-auto w-full sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Editar Lançamento</SheetTitle>
-          <SheetDescription>
-            Edite os detalhes do lançamento. As alterações são salvas automaticamente ao fechar.
-          </SheetDescription>
+          <SheetDescription>Edite os detalhes do lançamento e clique em salvar.</SheetDescription>
         </SheetHeader>
         <div className="space-y-4 mt-6">
           <div className="space-y-2">
@@ -75,7 +124,6 @@ export function TransactionEditorSheet({ transaction, onClose }: Props) {
             <Input
               value={formData.descricao || ''}
               onChange={(e) => handleChange('descricao', e.target.value)}
-              onBlur={handleSave}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -83,116 +131,95 @@ export function TransactionEditorSheet({ transaction, onClose }: Props) {
               <Label>Valor</Label>
               <Input
                 type="number"
+                step="0.01"
                 value={formData.valor || ''}
-                onChange={(e) => handleChange('valor', parseFloat(e.target.value))}
-                onBlur={handleSave}
+                onChange={(e) => handleChange('valor', e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label>Data</Label>
+              <Label>Data de Lançamento</Label>
               <Input
                 type="date"
-                value={formData.data || ''}
-                onChange={(e) => handleChange('data', e.target.value)}
-                onBlur={handleSave}
+                value={formData.data_lancamento || ''}
+                onChange={(e) => handleChange('data_lancamento', e.target.value)}
               />
             </div>
           </div>
+
           <div className="space-y-2">
-            <Label>Categoria</Label>
-            <Select
-              value={formData.categoria}
-              onValueChange={(v) => {
-                handleChange('categoria', v)
-                handleSave()
-              }}
-            >
+            <Label>Tipo</Label>
+            <Select value={formData.tipo || ''} onValueChange={(v) => handleChange('tipo', v)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
+                <SelectItem value="receita">Receita</SelectItem>
+                <SelectItem value="despesa_fixa">Despesa Fixa</SelectItem>
+                <SelectItem value="despesa_variavel">Despesa Variável</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
           <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <Select
+                value={formData.categoria_id || ''}
+                onValueChange={(v) => handleChange('categoria_id', v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {apiCategorias.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nome || c.name || c.descricao || c.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>Unidade</Label>
               <Select
-                value={formData.unidade}
-                onValueChange={(v) => {
-                  handleChange('unidade', v)
-                  handleSave()
-                }}
+                value={formData.unidade_id || ''}
+                onValueChange={(v) => handleChange('unidade_id', v)}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {UNIDADES.map((u) => (
-                    <SelectItem key={u} value={u}>
-                      {u}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Banco</Label>
-              <Select
-                value={formData.banco}
-                onValueChange={(v) => {
-                  handleChange('banco', v)
-                  handleSave()
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BANCOS.map((b) => (
-                    <SelectItem key={b} value={b}>
-                      {b}
+                  {apiUnidades.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nome || u.name || u.id}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
+
           <div className="space-y-2">
-            <Label>Cartão de Crédito</Label>
-            <Select
-              value={formData.card_id || 'none'}
-              onValueChange={(v) => {
-                handleChange('card_id', v)
-                handleSave()
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Nenhum" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Nenhum</SelectItem>
-                {cards.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Observações</Label>
-            <Textarea
-              value={formData.observacoes || ''}
-              onChange={(e) => handleChange('observacoes', e.target.value)}
-              onBlur={handleSave}
+            <Label>Competência (Opcional)</Label>
+            <Input
+              type="month"
+              value={formData.competencia || ''}
+              onChange={(e) => handleChange('competencia', e.target.value)}
             />
           </div>
+
+          <div className="space-y-2">
+            <Label>Observações (Opcional)</Label>
+            <Textarea
+              value={formData.observacao || ''}
+              onChange={(e) => handleChange('observacao', e.target.value)}
+            />
+          </div>
+
+          <Button onClick={handleSave} className="w-full mt-4" disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Salvar Alterações
+          </Button>
         </div>
       </SheetContent>
     </Sheet>

@@ -7,7 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Textarea } from './ui/textarea'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
-import { Loader2, Camera, FileText } from 'lucide-react'
+import { Loader2, Camera, FileText, CalendarIcon } from 'lucide-react'
+import { format, parseISO } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
+import { Calendar } from './ui/calendar'
+import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 import { ImportModal } from './importer/ImportModal'
 import { OCRScannerModal } from './OCRScannerModal'
@@ -78,7 +83,6 @@ export function TransactionForm() {
       // Keep unidade, categoria and data for easier sequential inputs
     } catch (error: any) {
       // context already handles the error toast
-      console.error(error)
     } finally {
       setLoading(false)
     }
@@ -129,40 +133,32 @@ export function TransactionForm() {
         </CardHeader>
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex flex-col sm:flex-row bg-slate-100 p-1 rounded-lg gap-1">
-              <button
-                type="button"
-                onClick={() => setFormType('receita')}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formType === 'receita' ? 'bg-white text-emerald-600 shadow-sm' : 'text-muted-foreground'}`}
-              >
-                Receita
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormType('despesa_fixa')}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formType === 'despesa_fixa' ? 'bg-white text-indigo-600 shadow-sm' : 'text-muted-foreground'}`}
-              >
-                Despesa Fixa
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormType('despesa_variavel')}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formType === 'despesa_variavel' ? 'bg-white text-amber-600 shadow-sm' : 'text-muted-foreground'}`}
-              >
-                Despesa Variável
-              </button>
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Tipo</Label>
+                <Select value={formType} onValueChange={(v: any) => setFormType(v)} required>
+                  <SelectTrigger className="bg-white h-10">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="receita">Receita</SelectItem>
+                    <SelectItem value="despesa_fixa">Despesa Fixa</SelectItem>
+                    <SelectItem value="despesa_variavel">Despesa Variável</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-1.5">
-              <Label>Descrição</Label>
-              <Input
-                required
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                placeholder="Ex: Pagamento Fornecedor"
-                className="bg-white"
-                autoComplete="off"
-              />
+              <div className="space-y-1.5">
+                <Label>Descrição</Label>
+                <Input
+                  required
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                  placeholder="Ex: Pagamento Fornecedor"
+                  className="bg-white h-10"
+                  autoComplete="off"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -173,18 +169,38 @@ export function TransactionForm() {
                   value={valorInput}
                   onChange={handleValorChange}
                   placeholder="R$ 0,00"
-                  className="bg-white font-mono"
+                  className="bg-white h-10 font-mono"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label>Data de Lançamento</Label>
-                <Input
-                  type="date"
-                  required
-                  value={dataLancamento}
-                  onChange={(e) => setDataLancamento(e.target.value)}
-                  className="bg-white"
-                />
+              <div className="space-y-1.5 flex flex-col">
+                <Label className="mb-1.5">Data de Lançamento</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={'outline'}
+                      className={cn(
+                        'w-full justify-start text-left font-normal bg-white h-10',
+                        !dataLancamento && 'text-muted-foreground',
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dataLancamento ? (
+                        format(parseISO(dataLancamento), 'dd/MM/yyyy')
+                      ) : (
+                        <span>Selecione a data</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dataLancamento ? parseISO(dataLancamento) : undefined}
+                      onSelect={(date) => setDataLancamento(date ? format(date, 'yyyy-MM-dd') : '')}
+                      initialFocus
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 

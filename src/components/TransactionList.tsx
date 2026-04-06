@@ -340,7 +340,7 @@ export function TransactionList() {
                       {!t.isCheckpoint && t.tipo === 'receita' && (
                         <Badge
                           variant="outline"
-                          className="font-medium text-[9px] uppercase tracking-wider text-green-600 border-green-200 bg-green-50/50"
+                          className="font-medium text-[9px] uppercase tracking-wider text-green-700 border-green-300 bg-green-100/50"
                         >
                           Receita
                         </Badge>
@@ -350,9 +350,9 @@ export function TransactionList() {
                           (t.tipo === 'despesa' && t.classificacao === 'fixo')) && (
                           <Badge
                             variant="outline"
-                            className="font-medium text-[9px] uppercase tracking-wider text-red-600 border-red-200 bg-red-50/50"
+                            className="font-medium text-[9px] uppercase tracking-wider text-red-700 border-red-300 bg-red-100/50"
                           >
-                            Fixo
+                            Despesa Fixa
                           </Badge>
                         )}
                       {!t.isCheckpoint &&
@@ -360,15 +360,15 @@ export function TransactionList() {
                           (t.tipo === 'despesa' && t.classificacao === 'variavel')) && (
                           <Badge
                             variant="outline"
-                            className="font-medium text-[9px] uppercase tracking-wider text-amber-600 border-amber-200 bg-amber-50/50"
+                            className="font-medium text-[9px] uppercase tracking-wider text-amber-700 border-amber-300 bg-amber-100/50"
                           >
-                            Variável
+                            Despesa Variável
                           </Badge>
                         )}
                       {!t.isCheckpoint && t.tipo === 'despesa' && !t.classificacao && (
                         <Badge
                           variant="outline"
-                          className="font-medium text-[9px] uppercase tracking-wider text-red-600 border-red-200 bg-red-50/50"
+                          className="font-medium text-[9px] uppercase tracking-wider text-red-700 border-red-300 bg-red-100/50"
                         >
                           Despesa
                         </Badge>

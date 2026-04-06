@@ -20,9 +20,9 @@ export function DashboardSummary() {
       .reduce((acc, t) => acc + (Number(t.valor) || 0), 0)
   }
 
-  const totalJau = calculateUnitTotal('Jau')
+  const totalJau = calculateUnitTotal('Jaú')
   const totalPederneiras = calculateUnitTotal('Pederneiras')
-  const totalLPaulista = calculateUnitTotal('L. Paulista')
+  const totalLPaulista = calculateUnitTotal('Lençóis Paulista')
   const totalSilvio = calculateUnitTotal('Pró-labore (Silvio/Luciana)')
 
   const receitas = filteredTx
@@ -62,7 +62,7 @@ export function DashboardSummary() {
       <CardContent className="p-4 grid grid-cols-2 gap-3">
         <div className="bg-white border border-slate-200 rounded-md p-3 flex flex-col justify-center">
           <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <Building2 className="w-3 h-3" /> Jau
+            <Building2 className="w-3 h-3" /> Jaú
           </p>
           <p className="text-sm font-bold text-slate-800">{formatCurrency(totalJau)}</p>
         </div>
@@ -76,7 +76,7 @@ export function DashboardSummary() {
 
         <div className="bg-white border border-slate-200 rounded-md p-3 flex flex-col justify-center">
           <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <Building2 className="w-3 h-3" /> L. Paulista
+            <Building2 className="w-3 h-3" /> Lençóis Paulista
           </p>
           <p className="text-sm font-bold text-slate-800">{formatCurrency(totalLPaulista)}</p>
         </div>

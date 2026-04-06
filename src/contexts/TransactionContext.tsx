@@ -5,6 +5,7 @@ import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from './AuthContext'
 import { ToastAction } from '@/components/ui/toast'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 interface TransactionContextData {
   transactions: Transaction[]
@@ -40,10 +41,6 @@ const mapRecordToTransaction = (record: any): Transaction => {
     classificacao = 'variavel'
   }
 
-  let unidade = record.unit
-  if (unidade === 'Jaú') unidade = 'Jau'
-  if (unidade === 'Lençóis Paulista') unidade = 'L. Paulista'
-
   return {
     id: record.id,
     tipo,
@@ -51,7 +48,7 @@ const mapRecordToTransaction = (record: any): Transaction => {
     valor: record.amount,
     data: record.date,
     categoria: record.category,
-    unidade: unidade,
+    unidade: record.unit,
     banco: record.bank,
     classificacao,
     observacoes: record.observations,
@@ -77,12 +74,7 @@ const mapTransactionToRecord = (
     rec.type = pbType
   }
   if (t.categoria !== undefined) rec.category = t.categoria || 'Outros'
-  if (t.unidade !== undefined) {
-    let pbUnit = t.unidade as string
-    if (pbUnit === 'Jau') pbUnit = 'Jaú'
-    if (pbUnit === 'L. Paulista') pbUnit = 'Lençóis Paulista'
-    rec.unit = pbUnit
-  }
+  if (t.unidade !== undefined) rec.unit = t.unidade
   if (t.banco !== undefined) rec.bank = t.banco || 'Outros'
   if (t.observacoes !== undefined) rec.observations = t.observacoes || ''
   if (t.card_id !== undefined) rec.card_id = t.card_id || null
@@ -104,7 +96,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       })
       setTransactions(records.map(mapRecordToTransaction))
     } catch (e) {
-      console.error('Error loading transactions', e)
+      // Ignore abort errors from auto-cancellation if any
     }
   }, [user])
 
@@ -129,7 +121,11 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       await pb.collection('transactions').create(rec)
       toast({ title: 'Sucesso!', description: 'Lançamento adicionado com sucesso.' })
     } catch (error: any) {
-      toast({ title: 'Erro', description: 'Falha ao adicionar.', variant: 'destructive' })
+      toast({
+        title: 'Erro',
+        description: getErrorMessage(error) || 'Falha ao adicionar.',
+        variant: 'destructive',
+      })
     } finally {
       setIsSyncing(false)
     }
@@ -203,7 +199,11 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         })
       }
     } catch (error: any) {
-      console.error(error)
+      toast({
+        title: 'Erro de Sincronização',
+        description: getErrorMessage(error),
+        variant: 'destructive',
+      })
     } finally {
       setIsSyncing(false)
       setSyncProgress(null)
@@ -224,7 +224,11 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       await pb.collection('transactions').update(id, rec)
       toast({ title: 'Atualizado', description: 'Lançamento salvo com sucesso.' })
     } catch (error) {
-      toast({ title: 'Erro', description: 'Falha ao atualizar.', variant: 'destructive' })
+      toast({
+        title: 'Erro',
+        description: getErrorMessage(error) || 'Falha ao atualizar.',
+        variant: 'destructive',
+      })
     } finally {
       setIsSyncing(false)
     }
@@ -236,7 +240,11 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       await pb.collection('transactions').delete(id)
       toast({ title: 'Excluído', description: 'Item excluído com sucesso.' })
     } catch (error) {
-      toast({ title: 'Erro', description: 'Falha ao excluir.', variant: 'destructive' })
+      toast({
+        title: 'Erro',
+        description: getErrorMessage(error) || 'Falha ao excluir.',
+        variant: 'destructive',
+      })
     } finally {
       setIsSyncing(false)
     }

@@ -5,9 +5,9 @@ export type ReceitaTipo = 'comissao' | 'outro'
 export type DespesaTipo = 'unitaria' | 'cia'
 
 export type Unidade =
-  | 'Jau'
+  | 'Jaú'
   | 'Pederneiras'
-  | 'L. Paulista'
+  | 'Lençóis Paulista'
   | 'Pró-labore (Silvio/Luciana)'
   | 'Geral'
 export type Banco =
@@ -195,9 +195,9 @@ export const DESPESAS_VARIAVEIS = [
 export const CATEGORIES = [...RECEITAS, ...DESPESAS_FIXAS, ...DESPESAS_VARIAVEIS]
 
 export const UNIDADES: Unidade[] = [
-  'Jau',
+  'Jaú',
   'Pederneiras',
-  'L. Paulista',
+  'Lençóis Paulista',
   'Pró-labore (Silvio/Luciana)',
   'Geral',
 ]

@@ -20,7 +20,12 @@ import { Transaction, CATEGORIES, UNIDADES, BANCOS } from '@/types'
 import { useTransactions } from '@/contexts/TransactionContext'
 import { toast } from '@/hooks/use-toast'
 import { Button } from './ui/button'
-import { Loader2 } from 'lucide-react'
+import { Loader2, CalendarIcon } from 'lucide-react'
+import { format, parseISO } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
+import { Calendar } from './ui/calendar'
+import { cn } from '@/lib/utils'
 
 interface Props {
   transaction: Transaction | null
@@ -119,13 +124,37 @@ export function TransactionEditorSheet({ transaction, onClose }: Props) {
                 onChange={(e) => handleChange('valor', e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Data de Lançamento</Label>
-              <Input
-                type="date"
-                value={formData.data || ''}
-                onChange={(e) => handleChange('data', e.target.value)}
-              />
+            <div className="space-y-2 flex flex-col">
+              <Label className="mb-1">Data de Lançamento</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={'outline'}
+                    className={cn(
+                      'w-full justify-start text-left font-normal bg-white',
+                      !formData.data && 'text-muted-foreground',
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.data ? (
+                      format(parseISO(formData.data), 'dd/MM/yyyy')
+                    ) : (
+                      <span>Selecione a data</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={formData.data ? parseISO(formData.data) : undefined}
+                    onSelect={(date) =>
+                      handleChange('data', date ? format(date, 'yyyy-MM-dd') : '')
+                    }
+                    initialFocus
+                    locale={ptBR}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 

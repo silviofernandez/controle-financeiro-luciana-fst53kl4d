@@ -23,7 +23,7 @@ export function useFinancialData() {
       })
       setTransactions(data)
     } catch (e) {
-      console.error(e)
+      // safe ignore
     } finally {
       setLoading(false)
     }

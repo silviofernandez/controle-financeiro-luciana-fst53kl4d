@@ -1,4 +1,4 @@
-export type TransactionType = 'receita' | 'despesa'
+export type TransactionType = 'receita' | 'despesa' | 'despesa_fixa' | 'despesa_variavel'
 
 export type ClassificacaoDespesa = 'fixo' | 'variavel' | null
 export type ReceitaTipo = 'comissao' | 'outro'
@@ -81,6 +81,10 @@ export interface Transaction {
   observacoes?: string
   card_id?: string
   created_at: string
+  data_lancamento?: string
+  competencia?: string
+  unidade_id?: string
+  categoria_id?: string
 }
 
 export type RuleValueType = 'percentage' | 'fixed'

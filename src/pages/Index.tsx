@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 
+import { useTransactions } from '@/contexts/TransactionContext'
 import { SummaryCards } from '@/components/dashboard/SummaryCards'
 import { DueDateAlerts } from '@/components/dashboard/DueDateAlerts'
 import { IncomeExpenseChart } from '@/components/dashboard/IncomeExpenseChart'
@@ -20,36 +21,15 @@ import { LatestCheckpointIndicator } from '@/components/LatestCheckpointIndicato
 
 export default function Index() {
   const { toast } = useToast()
-  const [apiTransactions, setApiTransactions] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { transactions, isSyncing } = useTransactions()
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   })
 
-  useEffect(() => {
-    const fetchLancamentos = async () => {
-      setIsLoading(true)
-      try {
-        const data = await api.lancamentos.listar()
-        setApiTransactions(Array.isArray(data) ? data : [])
-      } catch (error) {
-        console.error('Failed to fetch API transactions', error)
-        toast({
-          variant: 'destructive',
-          title: 'Erro ao carregar dados',
-          description: 'Não foi possível buscar as transações da API.',
-        })
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchLancamentos()
-  }, [toast])
-
   const { periodTransactions, prevTransactions } = useMemo(() => {
-    const valid = apiTransactions.filter((t: any) => !t.isCheckpoint)
+    const valid = transactions.filter((t: any) => !t.isCheckpoint)
     if (!dateRange?.from) return { periodTransactions: valid, prevTransactions: [] }
 
     const from = startOfDay(dateRange.from)
@@ -74,7 +54,7 @@ export default function Index() {
     })
 
     return { periodTransactions: current, prevTransactions: prev }
-  }, [apiTransactions, dateRange])
+  }, [dateRange])
 
   const handleExportExcel = () => {
     const headers = [
@@ -89,16 +69,14 @@ export default function Index() {
     ]
     const csvContent = periodTransactions.map((t: any) =>
       [
-        t.data_lancamento ? format(parseISO(t.data_lancamento), 'dd/MM/yyyy') : '',
+        t.data ? format(parseISO(t.data), 'dd/MM/yyyy') : '',
         t.tipo || '',
-        t.categoria_id || t.categoria || '',
+        t.categoria || '',
         t.descricao || '',
         t.valor || 0,
-        t.unidade_id || t.unidade || '',
+        t.unidade || '',
         t.banco || '',
-        t.observacao || t.observacoes
-          ? `"${(t.observacao || t.observacoes).replace(/"/g, '""')}"`
-          : '',
+        t.observacoes ? `"${t.observacoes.replace(/"/g, '""')}"` : '',
       ].join(';'),
     )
     const csvStr = [headers.join(';'), ...csvContent].join('\n')
@@ -174,14 +152,17 @@ export default function Index() {
         </div>
       </div>
 
-      <SummaryCards transactions={periodTransactions} isLoading={isLoading} />
+      <SummaryCards
+        transactions={periodTransactions}
+        isLoading={isSyncing && transactions.length === 0}
+      />
 
       <div className="grid gap-6 md:grid-cols-3 items-stretch">
         <div className="md:col-span-2">
           <IncomeExpenseChart transactions={periodTransactions} dateRange={dateRange} />
         </div>
         <div className="md:col-span-1">
-          <DueDateAlerts transactions={apiTransactions} />
+          <DueDateAlerts transactions={transactions} />
         </div>
       </div>
 

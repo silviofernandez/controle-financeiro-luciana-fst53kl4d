@@ -7,6 +7,16 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Input } from './ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
@@ -25,6 +35,14 @@ export function TransactionList() {
   const [filterBanco, setFilterBanco] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
+  const [deletingTxId, setDeletingTxId] = useState<string | null>(null)
+
+  const handleConfirmDelete = () => {
+    if (deletingTxId) {
+      deleteTransaction(deletingTxId)
+      setDeletingTxId(null)
+    }
+  }
 
   const handlePrevMonth = () => {
     setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
@@ -375,7 +393,7 @@ export function TransactionList() {
                         className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-destructive hover:bg-destructive/10"
                         onClick={(e) => {
                           e.stopPropagation()
-                          deleteTransaction(t.id)
+                          setDeletingTxId(t.id)
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -389,6 +407,26 @@ export function TransactionList() {
         )}
       </CardContent>
       <TransactionEditorSheet transaction={editingTx} onClose={() => setEditingTx(null)} />
+
+      <AlertDialog open={!!deletingTxId} onOpenChange={(open) => !open && setDeletingTxId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O lançamento será permanentemente removido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
 }

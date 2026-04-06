@@ -27,16 +27,16 @@ const TransactionContext = createContext<TransactionContextData>({} as Transacti
 export const useTransactions = () => useContext(TransactionContext)
 
 const mapRecordToTransaction = (record: any): Transaction => {
-  let tipo: 'receita' | 'despesa' = 'despesa'
+  let tipo: 'receita' | 'despesa' | 'despesa_fixa' | 'despesa_variavel' = 'despesa_variavel'
   let classificacao: 'fixo' | 'variavel' | null = null
 
   if (record.type === 'Receita') {
     tipo = 'receita'
   } else if (record.type === 'Despesa Fixa') {
-    tipo = 'despesa'
+    tipo = 'despesa_fixa'
     classificacao = 'fixo'
   } else if (record.type === 'Despesa Variável') {
-    tipo = 'despesa'
+    tipo = 'despesa_variavel'
     classificacao = 'variavel'
   }
 
@@ -71,7 +71,9 @@ const mapTransactionToRecord = (
   if (t.tipo !== undefined || t.classificacao !== undefined) {
     let pbType = 'Despesa Variável'
     if (t.tipo === 'receita') pbType = 'Receita'
-    else if (t.classificacao === 'fixo') pbType = 'Despesa Fixa'
+    else if (t.tipo === 'despesa_fixa' || t.classificacao === 'fixo') pbType = 'Despesa Fixa'
+    else if (t.tipo === 'despesa_variavel' || t.classificacao === 'variavel')
+      pbType = 'Despesa Variável'
     rec.type = pbType
   }
   if (t.categoria !== undefined) rec.category = t.categoria || 'Outros'

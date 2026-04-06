@@ -16,8 +16,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Transaction } from '@/types'
-import { api } from '@/lib/api'
+import { Transaction, CATEGORIES, UNIDADES, BANCOS } from '@/types'
+import { useTransactions } from '@/contexts/TransactionContext'
 import { toast } from '@/hooks/use-toast'
 import { Button } from './ui/button'
 import { Loader2 } from 'lucide-react'
@@ -28,32 +28,23 @@ interface Props {
 }
 
 export function TransactionEditorSheet({ transaction, onClose }: Props) {
+  const { updateTransaction } = useTransactions()
   const [formData, setFormData] = useState<Partial<any>>({})
-  const [apiCategorias, setApiCategorias] = useState<any[]>([])
-  const [apiUnidades, setApiUnidades] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    api.categorias.listarCategorias().then(setApiCategorias).catch(console.error)
-    api.unidades.listarUnidades().then(setApiUnidades).catch(console.error)
-  }, [])
 
   useEffect(() => {
     if (transaction) {
       setFormData({
-        descricao: transaction.descricao || transaction.description || '',
-        valor: transaction.valor || transaction.amount || 0,
-        tipo: transaction.tipo || transaction.type || 'despesa_variavel',
-        data_lancamento:
-          transaction.data_lancamento ||
-          transaction.data?.split('T')[0] ||
-          transaction.date?.split('T')[0] ||
-          '',
+        descricao: transaction.descricao || '',
+        valor: transaction.valor || 0,
+        tipo: transaction.tipo || 'despesa_variavel',
+        data: transaction.data?.split('T')[0] || transaction.data_lancamento?.split('T')[0] || '',
         competencia: transaction.competencia || '',
-        unidade_id: transaction.unidade_id || '',
-        categoria_id: transaction.categoria_id || '',
-        observacao:
-          transaction.observacao || transaction.observacoes || transaction.observations || '',
+        unidade: transaction.unidade || transaction.unidade_nome || transaction.unidade_id || '',
+        categoria:
+          transaction.categoria || transaction.categoria_nome || transaction.categoria_id || '',
+        banco: transaction.banco || '',
+        observacoes: transaction.observacoes || transaction.observacao || '',
       })
     }
   }, [transaction])
@@ -68,9 +59,9 @@ export function TransactionEditorSheet({ transaction, onClose }: Props) {
     if (
       !formData.descricao ||
       !formData.valor ||
-      !formData.data_lancamento ||
-      !formData.unidade_id ||
-      !formData.categoria_id
+      !formData.data ||
+      !formData.unidade ||
+      !formData.categoria
     ) {
       toast({
         title: 'Atenção',
@@ -86,26 +77,18 @@ export function TransactionEditorSheet({ transaction, onClose }: Props) {
         descricao: formData.descricao,
         valor: typeof formData.valor === 'string' ? parseFloat(formData.valor) : formData.valor,
         tipo: formData.tipo,
-        data_lancamento: formData.data_lancamento,
-        unidade_id: formData.unidade_id,
-        categoria_id: formData.categoria_id,
+        data: formData.data,
+        unidade: formData.unidade,
+        categoria: formData.categoria,
+        banco: formData.banco || undefined,
         competencia: formData.competencia || undefined,
-        observacao: formData.observacao || undefined,
+        observacoes: formData.observacoes || undefined,
       }
 
-      await api.lancamentos.atualizar(transaction.id, payload)
-      toast({ title: 'Sucesso', description: 'Lançamento atualizado com sucesso!' })
-
-      // Dispatch custom event to notify lists to refresh
-      window.dispatchEvent(new Event('transactions-updated'))
-
+      await updateTransaction(transaction.id, payload)
       onClose()
     } catch (error: any) {
-      toast({
-        title: 'Erro',
-        description: error.message || 'Erro ao atualizar',
-        variant: 'destructive',
-      })
+      // The context already displays the error toast
     } finally {
       setLoading(false)
     }
@@ -140,8 +123,8 @@ export function TransactionEditorSheet({ transaction, onClose }: Props) {
               <Label>Data de Lançamento</Label>
               <Input
                 type="date"
-                value={formData.data_lancamento || ''}
-                onChange={(e) => handleChange('data_lancamento', e.target.value)}
+                value={formData.data || ''}
+                onChange={(e) => handleChange('data', e.target.value)}
               />
             </div>
           </div>
@@ -164,16 +147,16 @@ export function TransactionEditorSheet({ transaction, onClose }: Props) {
             <div className="space-y-2">
               <Label>Categoria</Label>
               <Select
-                value={formData.categoria_id || ''}
-                onValueChange={(v) => handleChange('categoria_id', v)}
+                value={formData.categoria || ''}
+                onValueChange={(v) => handleChange('categoria', v)}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {apiCategorias.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nome || c.name || c.descricao || c.id}
+                  {CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -182,21 +165,37 @@ export function TransactionEditorSheet({ transaction, onClose }: Props) {
             <div className="space-y-2">
               <Label>Unidade</Label>
               <Select
-                value={formData.unidade_id || ''}
-                onValueChange={(v) => handleChange('unidade_id', v)}
+                value={formData.unidade || ''}
+                onValueChange={(v) => handleChange('unidade', v)}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {apiUnidades.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.nome || u.name || u.id}
+                  {UNIDADES.map((u) => (
+                    <SelectItem key={u} value={u}>
+                      {u}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Banco</Label>
+            <Select value={formData.banco || ''} onValueChange={(v) => handleChange('banco', v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BANCOS.map((b) => (
+                  <SelectItem key={b} value={b}>
+                    {b}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -211,8 +210,8 @@ export function TransactionEditorSheet({ transaction, onClose }: Props) {
           <div className="space-y-2">
             <Label>Observações (Opcional)</Label>
             <Textarea
-              value={formData.observacao || ''}
-              onChange={(e) => handleChange('observacao', e.target.value)}
+              value={formData.observacoes || ''}
+              onChange={(e) => handleChange('observacoes', e.target.value)}
             />
           </div>
 

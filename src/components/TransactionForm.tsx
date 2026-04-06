@@ -1,5 +1,5 @@
-import { useState, useEffect, FormEvent, ChangeEvent } from 'react'
-import { api } from '@/lib/api'
+import { useState, FormEvent, ChangeEvent } from 'react'
+import { useTransactions } from '@/contexts/TransactionContext'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -11,8 +11,11 @@ import { Loader2, Camera, FileText } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { ImportModal } from './importer/ImportModal'
 import { OCRScannerModal } from './OCRScannerModal'
+import { CATEGORIES, UNIDADES, BANCOS } from '@/types'
 
 export function TransactionForm() {
+  const { addTransaction } = useTransactions()
+
   const [formType, setFormType] = useState<'receita' | 'despesa_fixa' | 'despesa_variavel'>(
     'despesa_variavel',
   )
@@ -27,21 +30,15 @@ export function TransactionForm() {
     }
   })
   const [competencia, setCompetencia] = useState('')
-  const [unidadeId, setUnidadeId] = useState('')
-  const [categoriaId, setCategoriaId] = useState('')
+  const [unidade, setUnidade] = useState('')
+  const [categoria, setCategoria] = useState('')
+  const [banco, setBanco] = useState('')
   const [observacao, setObservacao] = useState('')
 
   const [loading, setLoading] = useState(false)
-  const [apiCategorias, setApiCategorias] = useState<any[]>([])
-  const [apiUnidades, setApiUnidades] = useState<any[]>([])
 
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [ocrModalOpen, setOcrModalOpen] = useState(false)
-
-  useEffect(() => {
-    api.categorias.listarCategorias().then(setApiCategorias).catch(console.error)
-    api.unidades.listarUnidades().then(setApiUnidades).catch(console.error)
-  }, [])
 
   const handleValorChange = (e: ChangeEvent<HTMLInputElement>) => {
     setValorInput(formatCurrency(parseCurrency(e.target.value)))
@@ -50,7 +47,7 @@ export function TransactionForm() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
 
-    if (!descricao || !valorInput || !dataLancamento || !unidadeId || !categoriaId) {
+    if (!descricao || !valorInput || !dataLancamento || !unidade || !categoria) {
       toast({
         title: 'Atenção',
         description: 'Preencha todos os campos obrigatórios.',
@@ -62,35 +59,26 @@ export function TransactionForm() {
     setLoading(true)
 
     try {
-      const payload = {
+      await addTransaction({
         descricao: descricao.trim(),
         valor: parseCurrency(valorInput),
         tipo: formType,
-        data_lancamento: dataLancamento,
-        unidade_id: unidadeId,
-        categoria_id: categoriaId,
+        data: dataLancamento,
+        unidade,
+        categoria,
+        banco: banco || 'Outros',
         competencia: competencia.trim() || undefined,
-        observacao: observacao.trim() || undefined,
-      }
-
-      await api.lancamentos.criar(payload)
+        observacoes: observacao.trim() || undefined,
+      })
 
       setDescricao('')
       setValorInput('')
       setObservacao('')
       setCompetencia('')
-      // Mantém unidade, categoria e data para facilitar novos lançamentos
-
-      toast({ title: 'Sucesso', description: 'Lançamento adicionado com sucesso!' })
-
-      // Dispara evento customizado para recarregar listas
-      window.dispatchEvent(new Event('transactions-updated'))
+      // Keep unidade, categoria and data for easier sequential inputs
     } catch (error: any) {
-      toast({
-        title: 'Erro',
-        description: error.message || 'Erro ao salvar',
-        variant: 'destructive',
-      })
+      // context already handles the error toast
+      console.error(error)
     } finally {
       setLoading(false)
     }
@@ -103,6 +91,7 @@ export function TransactionForm() {
     if (extracted.triageAction === 'Pró-labore') {
       setFormType('despesa_fixa')
       setDescricao(`Pró-labore - ${extracted.establishment}`)
+      setUnidade('Pró-labore (Silvio/Luciana)')
     } else {
       setFormType('despesa_variavel')
       setDescricao(extracted.establishment)
@@ -199,17 +188,17 @@ export function TransactionForm() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label>Categoria</Label>
-                <Select value={categoriaId} onValueChange={setCategoriaId} required>
+                <Select value={categoria} onValueChange={setCategoria} required>
                   <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Selecione a categoria" />
+                    <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {apiCategorias.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.nome || c.name || c.descricao || c.id}
+                    {CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -217,14 +206,29 @@ export function TransactionForm() {
               </div>
               <div className="space-y-1.5">
                 <Label>Unidade</Label>
-                <Select value={unidadeId} onValueChange={setUnidadeId} required>
+                <Select value={unidade} onValueChange={setUnidade} required>
                   <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Selecione a unidade" />
+                    <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {apiUnidades.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.nome || u.name || u.id}
+                    {UNIDADES.map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Banco</Label>
+                <Select value={banco} onValueChange={setBanco}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Opcional" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BANCOS.map((b) => (
+                      <SelectItem key={b} value={b}>
+                        {b}
                       </SelectItem>
                     ))}
                   </SelectContent>

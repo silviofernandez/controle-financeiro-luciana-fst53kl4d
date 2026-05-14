@@ -7,6 +7,14 @@ import { Calendar as CalendarIcon, Download, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { UNIDADES } from '@/types'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
@@ -27,6 +35,7 @@ export default function Index() {
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   })
+  const [selectedUnit, setSelectedUnit] = useState<string>('all')
 
   const { periodTransactions, prevTransactions } = useMemo(() => {
     const valid = transactions.filter((t: any) => !t.isCheckpoint)
@@ -43,18 +52,22 @@ export default function Index() {
       const dateStr = t.data_lancamento || t.data || t.date
       if (!dateStr) return false
       const d = parseISO(dateStr)
-      return d >= from && d <= to
+      const inDate = d >= from && d <= to
+      const inUnit = selectedUnit === 'all' || t.unidade === selectedUnit
+      return inDate && inUnit
     })
 
     const prev = valid.filter((t: any) => {
       const dateStr = t.data_lancamento || t.data || t.date
       if (!dateStr) return false
       const d = parseISO(dateStr)
-      return d >= prevFrom && d <= prevTo
+      const inDate = d >= prevFrom && d <= prevTo
+      const inUnit = selectedUnit === 'all' || t.unidade === selectedUnit
+      return inDate && inUnit
     })
 
     return { periodTransactions: current, prevTransactions: prev }
-  }, [dateRange])
+  }, [dateRange, transactions, selectedUnit])
 
   const handleExportExcel = () => {
     const headers = [
@@ -109,6 +122,20 @@ export default function Index() {
           <p className="text-slate-500 mt-1">Visão geral e tendências financeiras.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+            <SelectTrigger className="w-[180px] bg-white">
+              <SelectValue placeholder="Selecione a Unidade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as Unidades</SelectItem>
+              {UNIDADES.map((u) => (
+                <SelectItem key={u} value={u}>
+                  {u === 'Pró-labore (Silvio/Luciana)' ? 'Pró-labore' : u}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Popover>
             <PopoverTrigger asChild>
               <Button

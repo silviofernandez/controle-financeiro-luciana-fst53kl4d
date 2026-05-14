@@ -9,6 +9,7 @@ import Commissions from './pages/Commissions'
 import ContributionMargin from './pages/ContributionMargin'
 import OperatingCosts from './pages/OperatingCosts'
 import CompanyResult from './pages/CompanyResult'
+import DFC from './pages/DFC'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import InsertData from './pages/InsertData'
@@ -64,6 +65,7 @@ const router = createBrowserRouter([
       { index: true, element: <Index /> },
       { path: 'inserir', element: <InsertData /> },
       { path: 'resultado-empresa', element: <CompanyResult /> },
+      { path: 'dfc', element: <DFC /> },
       { path: 'relatorios', element: <Reports /> },
       { path: 'margem-contribuicao', element: <ContributionMargin /> },
       { path: 'custos-operacionais', element: <OperatingCosts /> },

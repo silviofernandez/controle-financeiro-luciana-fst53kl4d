@@ -9,6 +9,7 @@ import {
   Receipt,
   TrendingUp,
   History,
+  BarChart3,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -24,6 +25,7 @@ const items = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Inserir Dados', url: '/inserir', icon: PlusCircle },
   { title: 'Resultado da Empresa', url: '/resultado-empresa', icon: TrendingUp },
+  { title: 'DFC', url: '/dfc', icon: BarChart3 },
   { title: 'Calculadora de Comissão', url: '/comissoes', icon: Calculator },
   { title: 'Margem de Contribuição', url: '/margem-contribuicao', icon: Activity },
   { title: 'Custos Operacionais', url: '/custos-operacionais', icon: Receipt },

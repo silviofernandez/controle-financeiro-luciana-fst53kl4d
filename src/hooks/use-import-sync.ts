@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { updateImportSession } from '@/services/import_sessions'
+import { useAutoSave } from '@/contexts/AutoSaveContext'
 import { PreviewItem } from '@/components/importer/types'
 
 export function useImportSync(
@@ -11,6 +11,8 @@ export function useImportSync(
   const [isSyncing, setIsSyncing] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
+  const { saveState, triggerSave } = useAutoSave()
+
   const markDirty = useCallback((id: string) => {
     setDirtyIds((prev) => {
       const next = new Set(prev)
@@ -20,27 +22,29 @@ export function useImportSync(
   }, [])
 
   useEffect(() => {
-    const isImporting = localStorage.getItem('import_in_progress') === 'true'
-    if (!sessionId || dirtyIds.size === 0 || isImporting) return
+    if (!sessionId || dirtyIds.size === 0) return
 
     if (timerRef.current) clearTimeout(timerRef.current)
 
     timerRef.current = setTimeout(async () => {
-      if (localStorage.getItem('import_in_progress') === 'true') return
       setIsSyncing(true)
       const currentDirty = new Set(dirtyIds)
+
       try {
-        await updateImportSession(sessionId, {
+        await saveState({
           triage_state: localItems,
           last_position: scrollPos,
         })
+
+        triggerSave()
+
         setDirtyIds((prev) => {
           const next = new Set(prev)
           currentDirty.forEach((id) => next.delete(id))
           return next
         })
       } catch (e) {
-        console.error('Failed to sync import session', e)
+        console.error('Failed to sync import session via AutoSave context', e)
       } finally {
         setIsSyncing(false)
       }
@@ -49,7 +53,7 @@ export function useImportSync(
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [localItems, sessionId, scrollPos, dirtyIds])
+  }, [localItems, sessionId, scrollPos, dirtyIds, saveState, triggerSave])
 
   return {
     isSyncing,

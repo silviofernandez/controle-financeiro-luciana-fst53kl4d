@@ -18,6 +18,7 @@ import Imports from './pages/Imports'
 import FinancialAnalysis from './pages/FinancialAnalysis'
 import Reconciliation from './pages/Reconciliation'
 import Bills from './pages/Bills'
+import DRE from './pages/DRE'
 
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -77,6 +78,7 @@ const router = createBrowserRouter([
       { path: 'auditoria', element: <Audit /> },
       { path: 'analise-financeira', element: <FinancialAnalysis /> },
       { path: 'contas', element: <Bills /> },
+      { path: 'dre', element: <DRE /> },
       { path: 'configuracoes', element: <Settings /> },
     ],
   },

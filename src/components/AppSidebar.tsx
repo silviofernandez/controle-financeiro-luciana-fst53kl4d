@@ -35,6 +35,7 @@ const items = [
   { title: 'Importações', url: '/importacoes', icon: FileText },
   { title: 'Auditoria', url: '/auditoria', icon: History },
   { title: 'Análise Financeira', url: '/analise-financeira', icon: LineChart },
+  { title: 'DRE', url: '/dre', icon: BarChart3 },
   { title: 'Relatórios', url: '/relatorios', icon: PieChart },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ]

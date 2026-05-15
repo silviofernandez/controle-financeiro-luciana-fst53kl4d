@@ -50,8 +50,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const extractErrorMsg = (err: any) => {
-    if (!err) return 'Falha na autenticação'
-    return err.error_description || err.message || 'Falha na autenticação'
+    if (typeof err === 'string') return err
+    if (!err) return 'Erro desconhecido'
+    return err?.message || err?.error_description || 'Erro desconhecido'
   }
 
   const signIn = async (email: string, pass: string) => {

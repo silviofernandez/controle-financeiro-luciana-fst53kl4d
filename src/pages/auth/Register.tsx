@@ -4,14 +4,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/contexts/AuthContext'
-import { extractFieldErrors, getErrorMessage } from '@/lib/supabase/errors'
+import { getErrorMessage } from '@/lib/supabase/errors'
 import { toast } from '@/hooks/use-toast'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function Register() {
   const { signUp } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -23,11 +25,10 @@ export default function Register() {
       await signUp(email, password)
       toast({ title: 'Sucesso', description: 'Conta criada com sucesso!' })
       navigate('/')
-    } catch (err: any) {
-      setErrors(extractFieldErrors(err))
+    } catch (error: any) {
       toast({
         title: 'Erro',
-        description: getErrorMessage(err) || 'Erro ao criar conta',
+        description: error?.message || getErrorMessage(error) || 'Erro ao criar conta',
         variant: 'destructive',
       })
     } finally {
@@ -56,13 +57,24 @@ export default function Register() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
           </div>
           {errors.form && <p className="text-sm text-destructive">{errors.form}</p>}

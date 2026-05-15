@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { CreditCard } from '@/types'
 import { toast } from '@/hooks/use-toast'
-import pb from '@/lib/pocketbase/client'
+import { supabase } from '@/lib/supabase/client'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from './AuthContext'
 
@@ -25,8 +25,9 @@ export const CreditCardProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const loadData = useCallback(async () => {
     if (!user) return
     try {
-      const records = await pb.collection('credit_cards').getFullList<CreditCard>()
-      setCards(records)
+      const { data, error } = await supabase.from('credit_cards').select('*')
+      if (error) throw error
+      setCards(data || [])
     } catch (e) {
       console.error('Error loading cards', e)
     }
@@ -48,7 +49,8 @@ export const CreditCardProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!user) return
     setIsLoading(true)
     try {
-      await pb.collection('credit_cards').create({ ...c, user_id: user.id })
+      const { error } = await supabase.from('credit_cards').insert({ ...c, user_id: user.id })
+      if (error) throw error
       toast({ title: 'Sucesso', description: 'Cartão adicionado.' })
     } catch (error) {
       toast({ title: 'Erro', description: 'Falha ao adicionar cartão.', variant: 'destructive' })
@@ -60,7 +62,8 @@ export const CreditCardProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const updateCard = async (id: string, c: Partial<CreditCard>) => {
     setIsLoading(true)
     try {
-      await pb.collection('credit_cards').update(id, c)
+      const { error } = await supabase.from('credit_cards').update(c).eq('id', id)
+      if (error) throw error
       toast({ title: 'Sucesso', description: 'Cartão atualizado.' })
     } catch (error) {
       toast({ title: 'Erro', description: 'Falha ao atualizar cartão.', variant: 'destructive' })
@@ -72,7 +75,8 @@ export const CreditCardProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const deleteCard = async (id: string) => {
     setIsLoading(true)
     try {
-      await pb.collection('credit_cards').delete(id)
+      const { error } = await supabase.from('credit_cards').delete().eq('id', id)
+      if (error) throw error
       toast({ title: 'Excluído', description: 'Cartão removido.' })
     } catch (error) {
       toast({ title: 'Erro', description: 'Falha ao remover.', variant: 'destructive' })

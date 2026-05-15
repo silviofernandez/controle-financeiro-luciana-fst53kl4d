@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { Transaction } from '@/types'
 import { toast } from '@/hooks/use-toast'
-import pb from '@/lib/pocketbase/client'
+import { supabase } from '@/lib/supabase/client'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from './AuthContext'
 import { ToastAction } from '@/components/ui/toast'
-import { getErrorMessage } from '@/lib/pocketbase/errors'
+import { getErrorMessage } from '@/lib/supabase/errors'
 
 interface TransactionContextData {
   transactions: Transaction[]
@@ -45,7 +45,7 @@ const mapRecordToTransaction = (record: any): Transaction => {
     id: record.id,
     tipo,
     descricao: record.description,
-    valor: record.amount,
+    valor: Number(record.amount),
     data: record.date,
     categoria: record.category,
     unidade: record.unit,
@@ -53,7 +53,7 @@ const mapRecordToTransaction = (record: any): Transaction => {
     classificacao,
     observacoes: record.observations,
     card_id: record.card_id,
-    created_at: record.created,
+    created_at: record.created || new Date().toISOString(),
   }
 }
 
@@ -64,7 +64,7 @@ const mapTransactionToRecord = (
   const rec: any = { user_id: userId }
   if (t.descricao !== undefined) rec.description = t.descricao
   if (t.valor !== undefined) rec.amount = t.valor
-  if (t.data !== undefined) rec.date = new Date(t.data).toISOString()
+  if (t.data !== undefined) rec.date = new Date(t.data).toISOString().split('T')[0]
   if (t.tipo !== undefined || t.classificacao !== undefined) {
     let pbType = 'Despesa Variável'
     if (t.tipo === 'receita') pbType = 'Receita'
@@ -91,12 +91,14 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const loadData = useCallback(async () => {
     if (!user) return
     try {
-      const records = await pb.collection('transactions').getFullList({
-        sort: '-date',
-      })
-      setTransactions(records.map(mapRecordToTransaction))
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('date', { ascending: false })
+      if (error) throw error
+      setTransactions((data || []).map(mapRecordToTransaction))
     } catch (e) {
-      // Ignore abort errors from auto-cancellation if any
+      console.error(e)
     }
   }, [user])
 
@@ -118,7 +120,8 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       const rec = mapTransactionToRecord(t, user.id)
       if (!rec.type) rec.type = t.tipo === 'receita' ? 'Receita' : 'Despesa Variável'
-      await pb.collection('transactions').create(rec)
+      const { error } = await supabase.from('transactions').insert(rec)
+      if (error) throw error
       toast({ title: 'Sucesso!', description: 'Lançamento adicionado com sucesso.' })
     } catch (error: any) {
       toast({
@@ -144,38 +147,18 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const BATCH_SIZE = 20
       for (let i = 0; i < ts.length; i += BATCH_SIZE) {
         const batch = ts.slice(i, i + BATCH_SIZE)
-
-        const promises = batch.map(async (t) => {
+        const records = batch.map((t) => {
           const rec = mapTransactionToRecord(t, user.id)
           if (!rec.type) rec.type = t.tipo === 'receita' ? 'Receita' : 'Despesa Variável'
-
-          let attempts = 0
-          let success = false
-          while (attempts < 4 && !success) {
-            // 1 initial + 3 retries
-            try {
-              await pb.collection('transactions').create(rec)
-              success = true
-            } catch (error) {
-              attempts++
-              if (attempts >= 4) {
-                throw error
-              }
-              await new Promise((resolve) => setTimeout(resolve, 1000))
-            }
-          }
-          return t
+          return rec
         })
 
-        const results = await Promise.allSettled(promises)
-
-        results.forEach((res, index) => {
-          if (res.status === 'fulfilled') {
-            successes++
-          } else {
-            failures.push(batch[index])
-          }
-        })
+        const { error } = await supabase.from('transactions').insert(records)
+        if (error) {
+          batch.forEach((t) => failures.push(t))
+        } else {
+          successes += batch.length
+        }
 
         currentProcessed += batch.length
         setSyncProgress({ current: Math.min(currentProcessed, ts.length), total: ts.length })
@@ -221,7 +204,8 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setIsSyncing(true)
     try {
       const rec = mapTransactionToRecord(t, user.id)
-      await pb.collection('transactions').update(id, rec)
+      const { error } = await supabase.from('transactions').update(rec).eq('id', id)
+      if (error) throw error
       toast({ title: 'Atualizado', description: 'Lançamento salvo com sucesso.' })
     } catch (error) {
       toast({
@@ -237,7 +221,8 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const deleteTransaction = async (id: string) => {
     setIsSyncing(true)
     try {
-      await pb.collection('transactions').delete(id)
+      const { error } = await supabase.from('transactions').delete().eq('id', id)
+      if (error) throw error
       toast({ title: 'Excluído', description: 'Item excluído com sucesso.' })
     } catch (error) {
       toast({

@@ -1,4 +1,4 @@
-import pb from '@/lib/pocketbase/client'
+import { supabase } from '@/lib/supabase/client'
 import { PreviewItem } from '@/components/importer/types'
 
 export interface ImportSession {
@@ -13,14 +13,26 @@ export interface ImportSession {
   updated: string
 }
 
-export const getImportSessions = () =>
-  pb.collection('import_sessions').getFullList<ImportSession>({ sort: '-created' })
+export const getImportSessions = async () => {
+  const { data, error } = await supabase
+    .from('import_sessions')
+    .select('*')
+    .order('created', { ascending: false })
+  if (error) throw error
+  return data as ImportSession[]
+}
 
 export const getActiveImportSession = async () => {
   try {
-    return await pb
-      .collection('import_sessions')
-      .getFirstListItem<ImportSession>('status != "Completed"', { sort: '-created' })
+    const { data, error } = await supabase
+      .from('import_sessions')
+      .select('*')
+      .neq('status', 'Completed')
+      .order('created', { ascending: false })
+      .limit(1)
+      .single()
+    if (error) throw error
+    return data as ImportSession
   } catch (e) {
     return null
   }
@@ -28,16 +40,32 @@ export const getActiveImportSession = async () => {
 
 export const getImportSessionById = async (id: string) => {
   try {
-    return await pb.collection('import_sessions').getOne<ImportSession>(id)
+    const { data, error } = await supabase.from('import_sessions').select('*').eq('id', id).single()
+    if (error) throw error
+    return data as ImportSession
   } catch (e) {
     return null
   }
 }
 
-export const createImportSession = (data: Partial<ImportSession>) =>
-  pb.collection('import_sessions').create<ImportSession>(data)
+export const createImportSession = async (data: Partial<ImportSession>) => {
+  const { data: res, error } = await supabase.from('import_sessions').insert(data).select().single()
+  if (error) throw error
+  return res as ImportSession
+}
 
-export const updateImportSession = (id: string, data: Partial<ImportSession>) =>
-  pb.collection('import_sessions').update<ImportSession>(id, data)
+export const updateImportSession = async (id: string, data: Partial<ImportSession>) => {
+  const { data: res, error } = await supabase
+    .from('import_sessions')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return res as ImportSession
+}
 
-export const deleteImportSession = (id: string) => pb.collection('import_sessions').delete(id)
+export const deleteImportSession = async (id: string) => {
+  const { error } = await supabase.from('import_sessions').delete().eq('id', id)
+  if (error) throw error
+}

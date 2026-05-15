@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 import { Detail } from '@/types'
-import pb from '@/lib/pocketbase/client'
+import { supabase } from '@/lib/supabase/client'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from './AuthContext'
 
@@ -22,8 +22,9 @@ export const DetailsProvider = ({ children }: { children: ReactNode }) => {
   const fetchDetails = useCallback(async () => {
     if (!user) return
     try {
-      const data = await pb.collection('details').getFullList<Detail>({ sort: 'name' })
-      setDetails(data)
+      const { data, error } = await supabase.from('details').select('*').order('name')
+      if (error) throw error
+      setDetails(data || [])
     } catch (e) {
       console.error(e)
     } finally {
@@ -40,8 +41,13 @@ export const DetailsProvider = ({ children }: { children: ReactNode }) => {
   const addDetail = async (name: string) => {
     if (!user) return null
     try {
-      const record = await pb.collection('details').create<Detail>({ user_id: user.id, name })
-      return record
+      const { data, error } = await supabase
+        .from('details')
+        .insert({ user_id: user.id, name })
+        .select()
+        .single()
+      if (error) throw error
+      return data as Detail
     } catch (e) {
       console.error(e)
       return null
@@ -49,12 +55,36 @@ export const DetailsProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const renameDetail = async (id: string, newName: string, updateTransactions: boolean) => {
+    if (!user) return
     try {
-      await pb.send(`/backend/v1/details/${id}/rename`, {
-        method: 'POST',
-        body: JSON.stringify({ newName, updateTransactions }),
-        headers: { 'Content-Type': 'application/json' },
-      })
+      const { data: detail, error: fetchErr } = await supabase
+        .from('details')
+        .select('name')
+        .eq('id', id)
+        .single()
+
+      if (fetchErr) throw fetchErr
+
+      const oldName = detail.name
+      const { error: updErr } = await supabase
+        .from('details')
+        .update({ name: newName })
+        .eq('id', id)
+      if (updErr) throw updErr
+
+      if (updateTransactions) {
+        await supabase
+          .from('transactions')
+          .update({ category: newName })
+          .eq('category', oldName)
+          .eq('user_id', user.id)
+
+        await supabase
+          .from('transactions')
+          .update({ bank: newName })
+          .eq('bank', oldName)
+          .eq('user_id', user.id)
+      }
       await fetchDetails()
     } catch (e) {
       console.error(e)
@@ -64,7 +94,8 @@ export const DetailsProvider = ({ children }: { children: ReactNode }) => {
 
   const removeDetail = async (id: string) => {
     try {
-      await pb.collection('details').delete(id)
+      const { error } = await supabase.from('details').delete().eq('id', id)
+      if (error) throw error
       setDetails((prev) => prev.filter((d) => d.id !== id))
     } catch (e) {
       console.error(e)

@@ -16,6 +16,7 @@ import InsertData from './pages/InsertData'
 import Audit from './pages/Audit'
 import Imports from './pages/Imports'
 import FinancialAnalysis from './pages/FinancialAnalysis'
+import Reconciliation from './pages/Reconciliation'
 
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -71,6 +72,7 @@ const router = createBrowserRouter([
       { path: 'custos-operacionais', element: <OperatingCosts /> },
       { path: 'comissoes', element: <Commissions /> },
       { path: 'importacoes', element: <Imports /> },
+      { path: 'conciliacao', element: <Reconciliation /> },
       { path: 'auditoria', element: <Audit /> },
       { path: 'analise-financeira', element: <FinancialAnalysis /> },
       { path: 'configuracoes', element: <Settings /> },

@@ -81,6 +81,8 @@ export interface Transaction {
   observacoes?: string
   card_id?: string
   created_at: string
+  reconciled_at?: string
+  reconciled_by?: string
   data_lancamento?: string
   competencia?: string
   unidade_id?: string

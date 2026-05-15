@@ -54,6 +54,8 @@ const mapRecordToTransaction = (record: any): Transaction => {
     observacoes: record.observations,
     card_id: record.card_id,
     created_at: record.created || new Date().toISOString(),
+    reconciled_at: record.reconciled_at,
+    reconciled_by: record.reconciled_by,
   }
 }
 
@@ -78,6 +80,8 @@ const mapTransactionToRecord = (
   if (t.banco !== undefined) rec.bank = t.banco || 'Outros'
   if (t.observacoes !== undefined) rec.observations = t.observacoes || ''
   if (t.card_id !== undefined) rec.card_id = t.card_id || null
+  if (t.reconciled_at !== undefined) rec.reconciled_at = t.reconciled_at
+  if (t.reconciled_by !== undefined) rec.reconciled_by = t.reconciled_by
 
   return rec
 }

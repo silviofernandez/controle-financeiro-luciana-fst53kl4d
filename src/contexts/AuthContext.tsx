@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 interface User {
   id: string
@@ -50,14 +49,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [])
 
+  const extractErrorMsg = (err: any) => {
+    if (!err) return 'Falha na autenticação'
+    return err.error_description || err.message || 'Falha na autenticação'
+  }
+
   const signIn = async (email: string, pass: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass })
-    if (error) throw new Error(getErrorMessage(error))
+    if (error) throw new Error(extractErrorMsg(error))
   }
 
   const signUp = async (email: string, pass: string) => {
     const { error } = await supabase.auth.signUp({ email, password: pass })
-    if (error) throw new Error(getErrorMessage(error))
+    if (error) throw new Error(extractErrorMsg(error))
   }
 
   const signOut = async () => {
@@ -66,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const recoverPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email)
-    if (error) throw new Error(getErrorMessage(error))
+    if (error) throw new Error(extractErrorMsg(error))
   }
 
   return (

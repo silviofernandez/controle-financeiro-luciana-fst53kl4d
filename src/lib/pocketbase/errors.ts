@@ -20,11 +20,10 @@ export function extractFieldErrors(error: unknown): FieldErrors {
   return errors
 }
 
-export function getErrorMessage(error: any): string {
-  if (!error) return 'Erro desconhecido'
-  if (typeof error === 'string') return error
-  if (error.message) return error.message
-  if (error.error_description) return error.error_description
-  if (error.msg) return error.msg
-  return 'Erro desconhecido'
+export function getErrorMessage(error: unknown): string {
+  if (!(error instanceof ClientResponseError)) {
+    return error instanceof Error ? error.message : 'An unexpected error occurred.'
+  }
+  const msgs = Object.values(extractFieldErrors(error))
+  return msgs.length > 0 ? msgs.join(' ') : error.message || 'An unexpected error occurred.'
 }

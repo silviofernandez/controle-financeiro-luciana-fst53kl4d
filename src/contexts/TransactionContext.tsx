@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/client'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from './AuthContext'
 import { ToastAction } from '@/components/ui/toast'
-import { getErrorMessage } from '@/lib/supabase/errors'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 interface TransactionContextData {
   transactions: Transaction[]
@@ -130,7 +130,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     } catch (error: any) {
       toast({
         title: 'Erro',
-        description: getErrorMessage(error) || 'Falha ao adicionar.',
+        description: getErrorMessage(error),
         variant: 'destructive',
       })
     } finally {
@@ -214,7 +214,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     } catch (error) {
       toast({
         title: 'Erro',
-        description: getErrorMessage(error) || 'Falha ao atualizar.',
+        description: getErrorMessage(error),
         variant: 'destructive',
       })
     } finally {
@@ -231,7 +231,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     } catch (error) {
       toast({
         title: 'Erro',
-        description: getErrorMessage(error) || 'Falha ao excluir.',
+        description: getErrorMessage(error),
         variant: 'destructive',
       })
     } finally {

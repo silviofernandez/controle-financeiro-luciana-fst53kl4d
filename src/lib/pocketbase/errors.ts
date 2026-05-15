@@ -21,14 +21,18 @@ export function extractFieldErrors(error: unknown): FieldErrors {
 }
 
 export function getErrorMessage(error: unknown): string {
-  if (typeof error === 'string') return error
-  if (!(error instanceof ClientResponseError)) {
-    if (error instanceof Error) return error.message
-    if (typeof error === 'object' && error !== null && 'message' in error) {
-      return String((error as any).message)
-    }
-    return 'Erro desconhecido'
+  if (!error) return 'Erro desconhecido'
+
+  if (error instanceof ClientResponseError) {
+    const msgs = Object.values(extractFieldErrors(error))
+    return msgs.length > 0 ? msgs.join(' ') : error.message || 'Erro desconhecido'
   }
-  const msgs = Object.values(extractFieldErrors(error))
-  return msgs.length > 0 ? msgs.join(' ') : error.message || 'Erro desconhecido'
+
+  if (error instanceof Error) return error.message
+
+  if (typeof error === 'object' && 'message' in error) {
+    return String((error as any).message)
+  }
+
+  return 'Erro desconhecido'
 }

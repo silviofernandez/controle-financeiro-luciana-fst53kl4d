@@ -26,9 +26,13 @@ export default function Register() {
       toast({ title: 'Sucesso', description: 'Conta criada com sucesso!' })
       navigate('/')
     } catch (error: any) {
+      const message =
+        error?.message ||
+        (error && typeof error === 'object' ? (error as any).message : null) ||
+        'Erro ao criar conta'
       toast({
         title: 'Erro',
-        description: error?.message || getErrorMessage(error) || 'Erro ao criar conta',
+        description: message,
         variant: 'destructive',
       })
     } finally {

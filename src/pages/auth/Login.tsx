@@ -28,9 +28,13 @@ export default function Login() {
       await signIn(email, password)
       navigate('/')
     } catch (error: any) {
+      const message =
+        error?.message ||
+        (error && typeof error === 'object' ? (error as any).message : null) ||
+        'Falha na autenticação'
       toast({
         title: 'Erro',
-        description: error?.message || 'Falha na autenticação',
+        description: message,
         variant: 'destructive',
       })
     } finally {

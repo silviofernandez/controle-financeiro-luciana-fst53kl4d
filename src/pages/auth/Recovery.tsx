@@ -1,106 +1,63 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import pb from '@/lib/pocketbase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Landmark, Loader2, ArrowLeft } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/lib/supabase/errors'
 
 export default function Recovery() {
+  const { recoverPassword } = useAuth()
   const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email) {
-      toast({
-        title: 'Atenção',
-        description: 'Por favor, insira um e-mail.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    setLoading(true)
+    setIsLoading(true)
     try {
-      await pb.collection('users').requestPasswordReset(email)
-      setSubmitted(true)
-      toast({
-        title: 'Enviado',
-        description: 'Recovery email sent! Please check your inbox and spam folder.',
-      })
-    } catch (error: any) {
+      await recoverPassword(email)
+      toast({ title: 'Sucesso', description: 'Email de recuperação enviado!' })
+    } catch (err: any) {
       toast({
         title: 'Erro',
-        description:
-          'Failed to send recovery email. Please verify the email address and try again.',
+        description: getErrorMessage(err) || 'Erro ao enviar email',
         variant: 'destructive',
       })
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50/50 p-4">
-      <Card className="w-full max-w-md shadow-lg border-blue-100/50 animate-fade-in-up">
-        <CardHeader className="space-y-3 pb-6 text-center">
-          <div className="flex justify-center mb-2">
-            <div className="h-12 w-12 bg-primary/10 flex items-center justify-center rounded-xl">
-              <Landmark className="h-6 w-6 text-primary" />
-            </div>
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+      <div className="w-full max-w-md space-y-8 rounded-lg bg-background p-8 shadow-sm">
+        <div className="space-y-2 text-center">
+          <h1 className="text-3xl font-bold tracking-tight">Recuperar Senha</h1>
+          <p className="text-muted-foreground">Informe seu email para receber o link</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight text-slate-800">
-            Recuperar Senha
-          </CardTitle>
-          <CardDescription className="text-slate-500">
-            Enviaremos as instruções para você redefinir sua senha.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!submitted ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Seu E-mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="bg-white"
-                />
-              </div>
-              <Button type="submit" className="w-full h-11" disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Enviar Link de Recuperação
-              </Button>
-            </form>
-          ) : (
-            <div className="text-center space-y-4 bg-emerald-50 text-emerald-800 p-4 rounded-lg border border-emerald-200 animate-in fade-in">
-              <p className="font-medium">Tudo certo!</p>
-              <p className="text-sm">
-                Se este e-mail estiver cadastrado, você receberá um link para criar uma nova senha
-                em instantes.
-              </p>
-            </div>
-          )}
-
-          <div className="mt-6 text-center">
-            <Link
-              to="/login"
-              className="inline-flex items-center text-sm font-medium text-slate-600 hover:text-primary transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar para o Login
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? 'Enviando...' : 'Enviar link'}
+          </Button>
+        </form>
+        <div className="text-center text-sm">
+          Lembrou a senha?{' '}
+          <Link to="/login" className="font-medium text-primary hover:underline">
+            Voltar ao login
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }

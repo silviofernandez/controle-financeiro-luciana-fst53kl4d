@@ -17,6 +17,7 @@ import Audit from './pages/Audit'
 import Imports from './pages/Imports'
 import FinancialAnalysis from './pages/FinancialAnalysis'
 import Reconciliation from './pages/Reconciliation'
+import Bills from './pages/Bills'
 
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -75,6 +76,7 @@ const router = createBrowserRouter([
       { path: 'conciliacao', element: <Reconciliation /> },
       { path: 'auditoria', element: <Audit /> },
       { path: 'analise-financeira', element: <FinancialAnalysis /> },
+      { path: 'contas', element: <Bills /> },
       { path: 'configuracoes', element: <Settings /> },
     ],
   },
